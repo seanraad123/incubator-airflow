@@ -83,6 +83,7 @@ class SSHOperator(BaseOperator):
                 get_pty = True
 
             # set timeout taken as params
+            self.log.info("Running command: %s", ' '.join(self.command))
             stdin, stdout, stderr = ssh_client.exec_command(command=self.command,
                                                             get_pty=get_pty,
                                                             timeout=self.timeout
