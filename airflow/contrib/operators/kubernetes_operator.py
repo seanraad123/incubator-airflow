@@ -21,10 +21,13 @@ class KubernetesOperator(BaseOperator):
     3. Tear down and clean up Kubernetes pod
     """
     def __init__(self,
-                 deployment_yaml):
+                 deployment_yaml,
+                 *args,
+                 **kwargs):
         """
         Will need to assert valid yaml.
         """
+        super(KubernetesOperator, self).__init__(*args, **kwargs)
         assert deployment_yaml
         self.deployment_yaml = deployment_yaml
         # assert docker_image
