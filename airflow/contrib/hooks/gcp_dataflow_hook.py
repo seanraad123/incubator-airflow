@@ -156,8 +156,8 @@ class DataFlowHook(GoogleCloudBaseHook):
         cmd = command_prefix + self._build_cmd(task_id, variables,
                                                label_formatter)
         _Dataflow(cmd).wait_for_done()
-        _DataflowJob(self.get_conn(), variables['project'],
-                     name, self.poll_sleep).wait_for_done()
+        #_DataflowJob(self.get_conn(), variables['project'],
+        #             name, self.poll_sleep).wait_for_done()
 
     def start_java_dataflow(self, task_id, variables, dataflow, job_class=None):
         name = task_id + "-" + str(uuid.uuid1())[:8]
