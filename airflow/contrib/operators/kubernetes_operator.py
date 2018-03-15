@@ -60,15 +60,6 @@ class KubernetesJobOperator(BaseOperator):
         self.job_name = job_name
         self.kubernetes_container_information_list = kubernetes_container_information_list
 
-    def on_kill(self):
-        """
-        Overrides method.
-        Clean up jobs (-> pods) when a task instance is killed.
-        Raising an error will fail the task.
-        """
-        self.run_subprocess(args=['kubectl', 'delete', 'job', '%s' % self.unique_job_name])
-        raise Exception('Task %s was killed.' % self.unique_job_name)
-
     def run_subprocess(self, args, stdin=None):
         try:
             result = subprocess.Popen(args=args, stdin=stdin, stdout=PIPE)
@@ -76,51 +67,63 @@ class KubernetesJobOperator(BaseOperator):
         except Exception as e:
             raise e
 
-    def poll_job_completion(self, unique_job_name):
+    def clean_up(self):
+        """
+        Deleting the job removes the job and all related pods.
+        Cleans old yamls off Airflow worker.
+        """
+        self.run_subprocess(args=['kubectl', 'delete', 'job', '%s' % self.unique_job_name])
+        self.run_subprocess(args=['rm', '%s' % self.filename])
+
+    def on_kill(self):
+        """
+        Run clean up.
+        Raising an error will fail the KubernetesJobOperator task.
+        """
+        self.clean_up()
+        raise Exception('Job %s was killed.' % self.unique_job_name)
+
+    def poll_job_completion(self):
         """
         Polls for Job completion every 60 seconds.
-        Fails the task if the Job has failed so it will be surfaced in Airflow.
+        Any Failed pods will raise an error and fail the KubernetesJobOperator task.
         """
+        logging.info('Polling for completion of job: %s' % self.unique_job_name)
         while True:
-            job_description = subprocess.Popen(args=['kubectl', 'describe', 'job', '%s' % unique_job_name], stdout=PIPE)
+            job_description = subprocess.Popen(args=['kubectl', 'describe', 'job', self.unique_job_name], stdout=PIPE)
             status_description = subprocess.Popen(args=['grep', 'Pods Statuses:'], stdin=job_description.stdout, stdout=PIPE)
             status_line = status_description.stdout.read()
-            logging.info('status_line is: %s' % status_line)
+            logging.info('Current status is: %s' % status_line)
 
             matched = re.search(r'(\d+) Running / \d+ Succeeded / (\d+) Failed', status_line)
             # If any Jobs fail, fail KubernetesJobOperator task
             if int(matched.group(2)) != 0:
-                raise Exception('JOB FAILED, FAIL TASK.')
+                self.clean_up()
+                raise Exception('%s has failed pods, failing task.' % self.unique_job_name)
 
             if int(matched.group(1)) == 0:
                 break
             else:
                 time.sleep(60)
 
-    def write_yaml(self, unique_job_name, filename):
+    def write_yaml(self):
         """
         Write Kubernetes job yaml to the Airflow worker.
         """
+        logging.info('Writing yaml file to worker: %s' % self.filename)
         template = Template(YAML_TEMPLATE)
-        yaml = template.render(job_name=unique_job_name, containers=self.kubernetes_container_information_list)
-        with open(filename, 'a') as yaml_file:
+        yaml = template.render(job_name=self.unique_job_name, containers=self.kubernetes_container_information_list)
+        with open(self.filename, 'a') as yaml_file:
             yaml_file.write(yaml)
 
     def execute(self, context):
         self.unique_job_name = '%s-%s' % (self.job_name, uuid.uuid4())
         self.filename = '%s.yaml' % self.unique_job_name
 
-        logging.info('writing file %s' % self.filename)
-        self.write_yaml(self.unique_job_name, self.filename)
+        self.write_yaml()
 
-        logging.info('running kubectl apply -f %s' % self.filename)
         self.run_subprocess(args=['kubectl', 'apply', '-f', '%s' % self.filename])
 
-        logging.info('polling for completion of job %s' % self.unique_job_name)
         self.poll_job_completion(self.unique_job_name)
 
-        logging.info('deleting job %s' % self.unique_job_name)
-        self.run_subprocess(args=['kubectl', 'delete', 'job', '%s' % self.unique_job_name])
-
-        logging.info('removing yaml from worker: %s' % self.filename)
-        self.run_subprocess(args=['rm', '%s' % self.filename])
+        self.clean_up()
