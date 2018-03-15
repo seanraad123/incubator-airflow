@@ -178,7 +178,7 @@ class DataFlowHook(GoogleCloudBaseHook):
 
     def start_python_dataflow(self, task_id, variables, dataflow, py_options):
         name = task_id + "-" + str(uuid.uuid1())[:8]
-        variables["job_name"] = name
+        #variables["job_name"] = name
 
         def label_formatter(labels_dict):
             return ['--labels={}={}'.format(key, value)
