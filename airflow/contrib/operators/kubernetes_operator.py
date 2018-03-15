@@ -1,6 +1,5 @@
 from airflow.models import BaseOperator
-from jinja2 import Template
-from subprocess import PIPE
+import jinja2
 import logging
 import re
 import subprocess
@@ -33,6 +32,9 @@ class KubernetesContainerInformation():
         self.image = image
         self.command = command
 
+# Amount of time to sleep between polling for the job status
+SLEEP_TIME_BETWEEN_POLLING = 60
+
 
 class KubernetesJobOperator(BaseOperator):
     """
@@ -61,19 +63,17 @@ class KubernetesJobOperator(BaseOperator):
         self.kubernetes_container_information_list = kubernetes_container_information_list
 
     def run_subprocess(self, args, stdin=None):
-        try:
-            result = subprocess.Popen(args=args, stdin=stdin, stdout=PIPE)
-            logging.info(result.stdout.read())
-        except Exception as e:
-            raise e
+        result = subprocess.check_output(args=args, stdin=stdin)
+        logging.info(result)
 
     def clean_up(self):
         """
         Deleting the job removes the job and all related pods.
         Cleans old yamls off Airflow worker.
         """
-        self.run_subprocess(args=['kubectl', 'delete', 'job', '%s' % self.unique_job_name])
-        self.run_subprocess(args=['rm', '%s' % self.filename])
+        self.run_subprocess(args=['kubectl', 'delete', 'job', self.unique_job_name])
+        # TODO: unlink was throwing errors, will investigate
+        self.run_subprocess(args=['rm', self.filename])
 
     def on_kill(self):
         """
@@ -89,31 +89,29 @@ class KubernetesJobOperator(BaseOperator):
         Any Failed pods will raise an error and fail the KubernetesJobOperator task.
         """
         logging.info('Polling for completion of job: %s' % self.unique_job_name)
-        while True:
-            job_description = subprocess.Popen(args=['kubectl', 'describe', 'job', self.unique_job_name], stdout=PIPE)
-            status_description = subprocess.Popen(args=['grep', 'Pods Statuses:'], stdin=job_description.stdout, stdout=PIPE)
-            status_line = status_description.stdout.read()
-            logging.info('Current status is: %s' % status_line)
+        running_job_count = 1
+        while running_job_count > 0:
+            job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', self.unique_job_name])
+            matched = re.search(r'(\d+) Running / \d+ Succeeded / (\d+) Failed', job_description)
+            logging.info('Current status is: %s' % matched.group(0))
 
-            matched = re.search(r'(\d+) Running / \d+ Succeeded / (\d+) Failed', status_line)
+            running_job_count = int(matched.group(1))
+            failed_job_count = int(matched.group(2))
             # If any Jobs fail, fail KubernetesJobOperator task
-            if int(matched.group(2)) != 0:
+            if failed_job_count != 0:
                 self.clean_up()
                 raise Exception('%s has failed pods, failing task.' % self.unique_job_name)
 
-            if int(matched.group(1)) == 0:
-                break
-            else:
-                time.sleep(60)
+            time.sleep(SLEEP_TIME_BETWEEN_POLLING)
 
     def write_yaml(self):
         """
         Write Kubernetes job yaml to the Airflow worker.
         """
         logging.info('Writing yaml file to worker: %s' % self.filename)
-        template = Template(YAML_TEMPLATE)
+        template = jinja2.Template(YAML_TEMPLATE)
         yaml = template.render(job_name=self.unique_job_name, containers=self.kubernetes_container_information_list)
-        with open(self.filename, 'a') as yaml_file:
+        with open(self.filename, 'w') as yaml_file:
             yaml_file.write(yaml)
 
     def execute(self, context):
@@ -124,6 +122,6 @@ class KubernetesJobOperator(BaseOperator):
 
         self.run_subprocess(args=['kubectl', 'apply', '-f', '%s' % self.filename])
 
-        self.poll_job_completion(self.unique_job_name)
+        self.poll_job_completion()
 
         self.clean_up()
