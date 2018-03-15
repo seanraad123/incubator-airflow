@@ -6,32 +6,6 @@ import subprocess
 import time
 import uuid
 
-YAML_TEMPLATE = """
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: {{ job_name }}
-spec:
-  template:
-    spec:
-      containers: {% for container in containers %}
-      - name: {{ container.name }}
-        image: {{ container.image }}
-        command: {{ container.command }} {% endfor %}
-      restartPolicy: Never
-  backoffLimit: 0
-"""
-
-
-class KubernetesContainerInformation():
-    def __init__(self,
-                 name,
-                 image,
-                 command):
-        self.name = name
-        self.image = image
-        self.command = command
-
 # Amount of time to sleep between polling for the job status
 SLEEP_TIME_BETWEEN_POLLING = 60
 
@@ -73,7 +47,7 @@ class KubernetesJobOperator(BaseOperator):
         """
         self.run_subprocess(args=['kubectl', 'delete', 'job', self.unique_job_name])
         # TODO: unlink was throwing errors, will investigate
-        self.run_subprocess(args=['rm', self.filename])
+        self.run_subprocess(args=['rm', self.unique_filename])
 
     def on_kill(self):
         """
@@ -104,24 +78,58 @@ class KubernetesJobOperator(BaseOperator):
 
             time.sleep(SLEEP_TIME_BETWEEN_POLLING)
 
-    def write_yaml(self):
-        """
-        Write Kubernetes job yaml to the Airflow worker.
-        """
-        logging.info('Writing yaml file to worker: %s' % self.filename)
-        template = jinja2.Template(YAML_TEMPLATE)
-        yaml = template.render(job_name=self.unique_job_name, containers=self.kubernetes_container_information_list)
-        with open(self.filename, 'w') as yaml_file:
-            yaml_file.write(yaml)
-
     def execute(self, context):
         self.unique_job_name = '%s-%s' % (self.job_name, uuid.uuid4())
-        self.filename = '%s.yaml' % self.unique_job_name
+        self.unique_filename = '%s.yaml' % self.unique_job_name
 
-        self.write_yaml()
+        generate_yaml_and_write_file(self.unique_filename,
+                                     self.unique_job_name,
+                                     self.kubernetes_container_information_list)
 
-        self.run_subprocess(args=['kubectl', 'apply', '-f', '%s' % self.filename])
+        self.run_subprocess(args=['kubectl', 'apply', '-f', '%s' % self.unique_filename])
 
         self.poll_job_completion()
 
         self.clean_up()
+
+
+YAML_TEMPLATE = """
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ job_name }}
+spec:
+  template:
+    spec:
+      containers: {% for container in containers %}
+      - name: {{ container.name }}
+        image: {{ container.image }}
+        command: {{ container.command }} {% endfor %}
+      restartPolicy: Never
+  backoffLimit: 0
+"""
+
+
+def generate_yaml_and_write_file(filename, unique_job_name, kubernetes_container_information_list):
+    """
+    Generate yaml string from YAML_TEMPLATE and inputs.
+    """
+    template = jinja2.Template(YAML_TEMPLATE)
+    yaml = template.render(job_name=unique_job_name, containers=kubernetes_container_information_list)
+    logging.info('Writing yaml file to Airflow worker: %s' % yaml)
+    with open(filename, 'w') as f:
+        f.write(yaml)
+
+
+class KubernetesContainerInformation():
+    """
+    Information for an individual container,
+    used to generate Kubernetes Job yamls.
+    """
+    def __init__(self,
+                 name,
+                 image,
+                 command):
+        self.name = name
+        self.image = image
+        self.command = command
