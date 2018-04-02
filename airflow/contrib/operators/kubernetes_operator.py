@@ -1,5 +1,5 @@
 from airflow.models import BaseOperator
-from airflow.utils.kubernetes_utils import generate_yaml
+from airflow.contrib.utils.kubernetes_utils import generate_yaml
 import logging
 import re
 import subprocess

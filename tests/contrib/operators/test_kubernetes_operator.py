@@ -1,7 +1,7 @@
 from airflow.models import DAG, TaskInstance
 from datetime import datetime, timedelta
-from airflow.utils.kubernetes_utils import KubernetesContainerInformation
-import airflow.contrib.operators.kubernetes_operator as kubernetes_operator
+from airflow.contrib.operators.kubernetes_operator import KubernetesJobOperator
+from airflow.contrib.utils.kubernetes_utils import KubernetesContainerInformation
 import mock
 import unittest
 
@@ -60,12 +60,12 @@ class KubernetesJobOperatorTest(unittest.TestCase):
         else:
             mock_check_output.side_effect = self.FAILURE_SIDE_EFFECTS
 
-        task = kubernetes_operator.KubernetesJobOperator(kubernetes_job_name='test-job',
-                                                         kubernetes_job_yaml_dictionary=kubernetes_job_yaml_dictionary,
-                                                         kubernetes_job_yaml_template=kubernetes_job_yaml_template,
-                                                         sleep_time_between_polling=0,
-                                                         task_id=self.TASK_ID,
-                                                         dag=self.DAG)
+        task = KubernetesJobOperator(kubernetes_job_name='test-job',
+                                     kubernetes_job_yaml_dictionary=kubernetes_job_yaml_dictionary,
+                                     kubernetes_job_yaml_template=kubernetes_job_yaml_template,
+                                     sleep_time_between_polling=0,
+                                     task_id=self.TASK_ID,
+                                     dag=self.DAG)
 
         task_instance = TaskInstance(task=task,
                                      execution_date=datetime.utcnow() - timedelta(days=1))
