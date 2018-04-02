@@ -7,9 +7,6 @@ import tempfile
 import time
 import uuid
 
-# Amount of time to sleep between polling for the job status
-SLEEP_SECONDS_BETWEEN_POLLING = 60
-
 
 class KubernetesJobOperator(BaseOperator):
     """
@@ -32,12 +29,14 @@ class KubernetesJobOperator(BaseOperator):
                  kubernetes_job_name,
                  kubernetes_job_yaml_dictionary=None,
                  kubernetes_job_yaml_template=None,
+                 sleep_seconds_between_polling=60,
                  *args,
                  **kwargs):
         super(KubernetesJobOperator, self).__init__(*args, **kwargs)
         self.kubernetes_job_name = kubernetes_job_name
         self.kubernetes_job_yaml_dictionary = kubernetes_job_yaml_dictionary or {}
         self.kubernetes_job_yaml_template = kubernetes_job_yaml_template
+        self.sleep_seconds_between_polling = sleep_seconds_between_polling
 
     def clean_up(self):
         """
@@ -63,7 +62,7 @@ class KubernetesJobOperator(BaseOperator):
         logging.info('Polling for completion of job: %s' % self.unique_job_name)
         running_job_count = 1
         while running_job_count > 0:
-            time.sleep(SLEEP_SECONDS_BETWEEN_POLLING)
+            time.sleep(self.sleep_seconds_between_polling)
 
             job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', self.unique_job_name])
             matched = re.search(r'(\d+) Running / \d+ Succeeded / (\d+) Failed', job_description)

@@ -48,20 +48,26 @@ class KubernetesJobOperatorTest(unittest.TestCase):
                             '0 Running / 0 Succeeded / 1 Failed',
                             'cleaned up']
 
-    def setUp(self):
-        kubernetes_operator.SLEEP_TIME_BETWEEN_POLLING = 1
-
     @mock.patch('subprocess.check_output')
     def kubernetes_job_operator_execution(self,
                                           success,
-                                          kubernetes_job_operator_task,
+                                          kubernetes_job_yaml_dictionary,
+                                          kubernetes_job_yaml_template,
                                           mock_check_output):
+
         if success:
             mock_check_output.side_effect = self.SUCCESS_SIDE_EFFECTS
         else:
             mock_check_output.side_effect = self.FAILURE_SIDE_EFFECTS
 
-        task_instance = TaskInstance(task=kubernetes_job_operator_task,
+        task = kubernetes_operator.KubernetesJobOperator(kubernetes_job_name='test-job',
+                                                         kubernetes_job_yaml_dictionary=kubernetes_job_yaml_dictionary,
+                                                         kubernetes_job_yaml_template=kubernetes_job_yaml_template,
+                                                         sleep_time_between_polling=0,
+                                                         task_id=self.TASK_ID,
+                                                         dag=self.DAG)
+
+        task_instance = TaskInstance(task=task,
                                      execution_date=datetime.utcnow() - timedelta(days=1))
 
         if success:
@@ -74,43 +80,29 @@ class KubernetesJobOperatorTest(unittest.TestCase):
             self.assertEquals('failed', task_instance.current_state())
 
     def test_basic_execution_failure(self):
-        task = kubernetes_operator.KubernetesJobOperator(kubernetes_job_name='test-basic',
-                                                         kubernetes_job_yaml_dictionary={
-                                                            'containers': [self.CONTAINER]
-                                                         },
-                                                         task_id=self.TASK_ID,
-                                                         dag=self.DAG)
         self.kubernetes_job_operator_execution(success=False,
-                                               kubernetes_job_operator_task=task)
+                                               kubernetes_job_yaml_dictionary={
+                                                    'containers': [self.CONTAINER]
+                                               },
+                                               kubernetes_job_yaml_template=None)
 
-    @mock.patch('subprocess.check_output')
     def test_basic_execution_success(self, mock_check_output):
-        task = kubernetes_operator.KubernetesJobOperator(kubernetes_job_name='test-basic',
-                                                         kubernetes_job_yaml_dictionary={
-                                                            'containers': [self.CONTAINER]
-                                                         },
-                                                         task_id=self.TASK_ID,
-                                                         dag=self.DAG)
         self.kubernetes_job_operator_execution(success=True,
-                                               kubernetes_job_operator_task=task)
+                                               kubernetes_job_yaml_dictionary={
+                                                    'containers': [self.CONTAINER]
+                                               },
+                                               kubernetes_job_yaml_template=None)
 
-    @mock.patch('subprocess.check_output')
     def test_user_provided_yaml_execution_failure(self, mock_check_output):
-        task = kubernetes_operator.KubernetesJobOperator(kubernetes_job_name='test-basic',
-                                                         kubernetes_job_yaml_template=self.YAML,
-                                                         task_id=self.TASK_ID,
-                                                         dag=self.DAG)
         self.kubernetes_job_operator_execution(success=False,
-                                               kubernetes_job_operator_task=task)
+                                               kubernetes_job_yaml_dictionary=None,
+                                               kubernetes_job_yaml_template=self.YAML)
 
-    @mock.patch('subprocess.check_output')
     def test_user_provided_yaml_execution_success(self, mock_check_output):
-        task = kubernetes_operator.KubernetesJobOperator(kubernetes_job_name='test-basic',
-                                                         kubernetes_job_yaml_template=self.YAML,
-                                                         task_id=self.TASK_ID,
-                                                         dag=self.DAG)
         self.kubernetes_job_operator_execution(success=True,
-                                               kubernetes_job_operator_task=task)
+                                               kubernetes_job_yaml_dictionary=None,
+                                               kubernetes_job_yaml_template=self.YAML)
+
 
 if __name__ == '__main__':
     unittest.main()
