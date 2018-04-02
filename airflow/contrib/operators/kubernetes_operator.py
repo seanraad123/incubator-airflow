@@ -10,7 +10,7 @@ import uuid
 
 class KubernetesJobOperator(BaseOperator):
     """
-    The KubernetesJobOperator spins up, executes, and cleans up a Kubernetes job.
+    KubernetesJobOperator spins up, executes, and cleans up a Kubernetes job.
     It does so by following these steps:
         1. Creates a Kubernetes Job yaml from a Job yaml template and dictionary of values
         2. Instatiates the Job
@@ -24,6 +24,8 @@ class KubernetesJobOperator(BaseOperator):
     :kubernetes_job_yaml_template: string representation of a Job yaml,
         if None will use default
     :type kubernetes_job_yaml_template: string
+    :param sleep_seconds_between_polling: seconds to sleep between polling for job completion
+    :type sleep_seconds_between_polling: int
     """
     def __init__(self,
                  kubernetes_job_name,
@@ -40,24 +42,22 @@ class KubernetesJobOperator(BaseOperator):
 
     def clean_up(self):
         """
-        Deleting the job removes the job and all related pods.
-        Iff error_message, raise Exception.
+        Deleting the job deletes the job and all related pods.
         """
         result = subprocess.check_output(args=['kubectl', 'delete', 'job', self.unique_job_name])
         logging.info(result)
 
     def on_kill(self):
         """
-        Run clean up.
-        Raising an error will fail the KubernetesJobOperator task.
+        Run clean up, fail the KubernetesJobOperator task.
         """
         self.clean_up()
         raise Exception('Job %s was killed.' % self.unique_job_name)
 
     def poll_job_completion(self):
         """
-        Polls for Job completion every 60 seconds.
-        Any Failed pods will raise an error and fail the KubernetesJobOperator task.
+        Polls for Job completion every sleep_seconds_between_polling seconds.
+        Any failed pods will raise an error and fail the KubernetesJobOperator task.
         """
         logging.info('Polling for completion of job: %s' % self.unique_job_name)
         running_job_count = 1
