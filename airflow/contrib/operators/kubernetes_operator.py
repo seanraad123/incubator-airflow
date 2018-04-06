@@ -75,7 +75,8 @@ class KubernetesJobOperator(BaseOperator):
 
         try:
             self.poll_job_completion()
+            self.clean_up()
         except Exception as e:
             raise e
-        finally:
-            self.clean_up()
+        # finally:
+            # self.clean_up()
