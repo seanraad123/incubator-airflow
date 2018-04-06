@@ -78,5 +78,3 @@ class KubernetesJobOperator(BaseOperator):
             self.clean_up()
         except Exception as e:
             raise e
-        # finally:
-            # self.clean_up()
