@@ -12,7 +12,10 @@ class KubernetesJobOperator(BaseOperator):
     KubernetesJobOperator will:
     1. Create a job given a Kubernetes job yaml
     2. Poll for the job's success/failure
-    3. Clean up the job after success/failure
+    3. a. If job succeeds, delete job (and related pods)
+       b. If pod fails, raise Exception and do not delete.
+          This will allow for easier debugging.
+          A separate process should be run to clean old dead jobs.
 
     :param job_yaml_string: Kubernetes job yaml as a formatted string, the job name
         should be unique to avoid overwriting already running jobs
