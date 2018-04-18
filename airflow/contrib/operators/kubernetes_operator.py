@@ -23,10 +23,15 @@ class KubernetesJobOperator(BaseOperator):
     :param sleep_seconds_between_polling: number of seconds to sleep between polling
         for job completion, defaults to 60
     :type sleep_seconds_between_polling: int
+    :param clean_up_successful_jobs: Flag to indicate whether or not successful jobs
+        and related pods should be deleted after completion. (Failed jobs and pods
+        are currently never deleted, they will have to be deleted manually.)
+    :type clean_up_successful_jobs: boolean
     """
     def __init__(self,
                  job_yaml_string,
                  sleep_seconds_between_polling=60,
+                 clean_up_successful_jobs=True,
                  *args,
                  **kwargs):
         super(KubernetesJobOperator, self).__init__(*args, **kwargs)
@@ -78,6 +83,7 @@ class KubernetesJobOperator(BaseOperator):
 
         try:
             self.poll_job_completion()
-            self.clean_up()
+            if self.clean_up_successful_jobs:
+                self.clean_up()
         except Exception as e:
             raise e
