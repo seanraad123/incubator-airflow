@@ -37,6 +37,7 @@ class KubernetesJobOperator(BaseOperator):
         super(KubernetesJobOperator, self).__init__(*args, **kwargs)
         self.job_yaml_string = job_yaml_string
         self.sleep_seconds_between_polling = sleep_seconds_between_polling
+        self.clean_up_successful_jobs = clean_up_successful_jobs
 
     def clean_up(self):
         """
