@@ -27,17 +27,21 @@ class KubernetesJobOperator(BaseOperator):
         and related pods should be deleted after completion. (Failed jobs and pods
         are currently never deleted, they will have to be deleted manually.)
     :type clean_up_successful_jobs: boolean
+    :param do_xcom_push: return the stdout which also get set in xcom by airflow platform
+    :type do_xcom_push: bool
     """
     def __init__(self,
                  job_yaml_string,
                  sleep_seconds_between_polling=60,
                  clean_up_successful_jobs=True,
+                 do_xcom_push=False,
                  *args,
                  **kwargs):
         super(KubernetesJobOperator, self).__init__(*args, **kwargs)
         self.job_yaml_string = job_yaml_string
         self.sleep_seconds_between_polling = sleep_seconds_between_polling
         self.clean_up_successful_jobs = clean_up_successful_jobs
+        self.do_xcom_push = do_xcom_push
 
     def clean_up(self):
         """
@@ -86,5 +90,13 @@ class KubernetesJobOperator(BaseOperator):
             self.poll_job_completion()
             if self.clean_up_successful_jobs:
                 self.clean_up()
+
+            # returning output if do_xcom_push is set
+            if self.do_xcom_push:
+                job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', self.job_name])
+                matched = re.search(r'Created pod: (.+?)\n', job_description)
+                pod = matched.group(1)
+                output = subprocess.check_output(args=['kubectl', 'logs', pod])
+                return output
         except Exception as e:
             raise e
