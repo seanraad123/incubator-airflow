@@ -1,13 +1,20 @@
 from airflow.models import BaseOperator
+from airflow.version import version
+from airflow.contrib.utils.kubernetes_utils import generate_yaml, KubernetesContainerInformation
 import logging
 import re
 import subprocess
 import tempfile
 import time
 import yaml
+import uuid
+import ast
 
 
 class KubernetesJobOperator(BaseOperator):
+    
+    template_fields = ['extra_param_dict']
+
     """
     KubernetesJobOperator will:
     1. Create a job given a Kubernetes job yaml
@@ -20,6 +27,9 @@ class KubernetesJobOperator(BaseOperator):
     :param job_yaml_string: Kubernetes job yaml as a formatted string, the job name
         should be unique to avoid overwriting already running jobs
     :type job_yaml_string: string
+    :param job_param_dict: Kubernetes job parameters as a dictionary, the job name
+        should be unique to avoid overwriting already running jobs
+    :type job_param_dict: dictionary
     :param sleep_seconds_between_polling: number of seconds to sleep between polling
         for job completion, defaults to 60
     :type sleep_seconds_between_polling: int
@@ -31,18 +41,24 @@ class KubernetesJobOperator(BaseOperator):
     :type do_xcom_push: bool
     """
     def __init__(self,
-                 job_yaml_string,
+                 job_yaml_string=None,
+                 job_param_dict=None,
                  sleep_seconds_between_polling=60,
                  clean_up_successful_jobs=True,
+                 extra_param_dict=None,
                  do_xcom_push=False,
                  *args,
                  **kwargs):
         super(KubernetesJobOperator, self).__init__(*args, **kwargs)
         self.job_yaml_string = job_yaml_string
+        self.job_param_dict = job_param_dict or {}
         self.sleep_seconds_between_polling = sleep_seconds_between_polling
         self.clean_up_successful_jobs = clean_up_successful_jobs
         self.do_xcom_push = do_xcom_push
-
+        self.extra_param_dict = extra_param_dict or {}
+        self.extra_param_dict.setdefault('labels', {}).update(
+            {'airflow-version': 'v' + version.replace('.', '-').replace('+', '-')})
+        
     def clean_up(self):
         """
         Deletes the job. Deleting the job deletes are related pods.
@@ -78,7 +94,32 @@ class KubernetesJobOperator(BaseOperator):
                 raise Exception('%s has failed pods, failing task.' % self.job_name)
 
     def execute(self, context):
-        self.job_name = yaml.safe_load(self.job_yaml_string)['metadata']['name']
+        # create job_yaml_string from the parameter dictionary.
+        # append extra parameters to commands inside the job
+        if not self.job_yaml_string and self.job_param_dict and 'containers' in self.job_param_dict:
+            logging.info("extra_param_dict is {}".format(self.extra_param_dict))
+            container_list = self.job_param_dict['containers']
+            for container in container_list:
+                command_list = ast.literal_eval(container.command)
+                for key, value in self.extra_param_dict.iteritems():
+                    if isinstance(value, dict):
+                        # we only append the first pair in the vlaue.
+                        command = "--{}={}={}".format(key, value.items()[0][0], value.items()[0][1])
+                        command_list.append(command)
+                    else:
+                        command = "--{}={}".format(key, value)
+                        command_list.append(command)
+                container.command = str(command_list)
+            unique_job_name = '%s-%s' % (self.job_param_dict['job_name'], uuid.uuid4())
+            self.job_param_dict.update({'job_name': unique_job_name})
+            self.job_yaml_string = generate_yaml(self.job_param_dict)
+            logging.info("job_yaml_string is {}".format(self.job_yaml_string))
+
+        # if we don't a job yaml, make the job fail.
+        if not self.job_yaml_string:
+            raise Exception("No job yaml.")
+        else:
+            self.job_name = yaml.safe_load(self.job_yaml_string)['metadata']['name']
 
         with tempfile.NamedTemporaryFile(suffix='.yaml') as f:
             f.write(self.job_yaml_string)
