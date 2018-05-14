@@ -45,24 +45,24 @@ def configure_logging():
         log.debug('Could not find key logging_config_class in config')
 
     if logging_class_path:
-        try:
-            logging_config = import_string(logging_class_path)
-            logging.info('logging config is: %s' % logging_config)
-            logging.info('logging config type is: %s' % type(logging_config))
+        # try:
+        logging_config = import_string(logging_class_path)
+        logging.info('logging config is: %s' % logging_config)
+        logging.info('logging config type is: %s' % type(logging_config))
 
-            # Make sure that the variable is in scope
-            assert (isinstance(logging_config, dict))
+        # Make sure that the variable is in scope
+        assert (isinstance(logging_config, dict))
 
-            log.info(
-                'Successfully imported user-defined logging config from %s',
-                logging_class_path
-            )
-        except Exception as err:
-            # Import default logging configurations.
-            raise ImportError(
-                'Unable to load custom logging from {} due to {}'
-                .format(logging_class_path, err)
-            )
+        log.info(
+            'Successfully imported user-defined logging config from %s',
+            logging_class_path
+        )
+        # except Exception as err:
+        #     # Import default logging configurations.
+        #     raise ImportError(
+        #         'Unable to load custom logging from {} due to {}'
+        #         .format(logging_class_path, err)
+        #     )
     else:
         from airflow.config_templates.airflow_local_settings import (
             DEFAULT_LOGGING_CONFIG as logging_config

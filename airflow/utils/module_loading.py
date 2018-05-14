@@ -25,11 +25,15 @@ def import_string(dotted_path):
     except ValueError:
         raise ImportError("{} doesn't look like a module path".format(dotted_path))
 
-    module = import_module(module_path)
+    try:
+        module = import_module(module_path)
+    except Exception as err:
+        raise Exception('Unable to import module %s: %s' % (module_path, err))
 
     try:
         return getattr(module, class_name)
     except AttributeError as err:
-        raise ImportError('Module "{}" does not define a "{}" attribute/class'.format(
-            module_path, class_name)
-        )
+        raise Exception('Error accessing attribute: %s' % err)
+        # raise ImportError('Module "{}" does not define a "{}" attribute/class'.format(
+        #     module_path, class_name)
+        # )
