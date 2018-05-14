@@ -40,12 +40,15 @@ def configure_logging():
         prepare_classpath()
 
         logging_class_path = conf.get('core', 'logging_config_class')
+        logging.info('logging class path is : %s' % logging_class_path)
     except AirflowConfigException:
         log.debug('Could not find key logging_config_class in config')
 
     if logging_class_path:
         try:
             logging_config = import_string(logging_class_path)
+            logging.info('logging config is: %s' % logging_config)
+            logging.info('logging config type is: %s' % type(logging_config))
 
             # Make sure that the variable is in scope
             assert (isinstance(logging_config, dict))
