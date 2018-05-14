@@ -39,7 +39,8 @@ def configure_logging():
         # is on the python classpath and it is reachable
         prepare_classpath()
 
-        logging_class_path = conf.get('core', 'logging_config_class')
+        config_path = os.path.join(conf.get('core', 'airflow_home'), 'config')
+        logging_class_path = os.path.join(config_path, conf.get('core', 'logging_config_class'))
         logging.info('logging class path is : %s' % logging_class_path)
     except AirflowConfigException:
         log.debug('Could not find key logging_config_class in config')
