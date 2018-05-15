@@ -12,7 +12,7 @@ import yaml
 
 
 class KubernetesJobOperator(BaseOperator):
-    template_fields = ('service_account_secret_name', 'env', 'sleep_seconds_between_polling')
+    template_fields = ('service_account_secret_name', 'env')
 
     def __init__(self,
                  job_name,
