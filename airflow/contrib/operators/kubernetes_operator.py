@@ -182,7 +182,7 @@ class KubernetesJobOperator(BaseOperator):
         instance_env['AIRFLOW_DAG_ID'] = self.dag_id
         instance_env['AIRFLOW_TASK_ID'] = self.task_id
         instance_env['AIRFLOW_EXECUTION_DATE'] = context['execution_date'].isoformat()
-        instance_env['AIRFLOW_ENABLE_XCOM_PICKLING'] = configuration.getboolean('core', 'enable_xcom_pickling')
+        instance_env['AIRFLOW_ENABLE_XCOM_PICKLING'] = str(configuration.getboolean('core', 'enable_xcom_pickling'))
         instance_env['KUBERNETES_JOB_NAME'] = unique_job_name
 
         # Make a copy of all the containers.
