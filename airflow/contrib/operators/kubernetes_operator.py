@@ -235,7 +235,7 @@ class KubernetesJobOperator(BaseOperator):
 
     def execute(self, context):
         job_name, job_yaml_string = self.create_job_yaml(context)
-        self.instance_names.append(job_name) # should happen once, but safety first!
+        self.instance_names.append(job_name)  # should happen once, but safety first!
 
         with tempfile.NamedTemporaryFile(suffix='.yaml') as f:
             f.write(job_yaml_string)
@@ -245,16 +245,21 @@ class KubernetesJobOperator(BaseOperator):
 
         try:
             self.poll_job_completion(job_name)
+
+            job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
+            matched = re.search(r'Created pod: (.+?)\n', job_description)
+            pod = matched.group(1)
+            output = subprocess.check_output(args=['kubectl', 'logs', pod])
+
+            # log output
+            self.log.info(output)
+
             if self.clean_up_successful_jobs:
                 self.clean_up(job_name)
 
             # returning output if do_xcom_push is set
             # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
             if self.do_xcom_push:
-                job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
-                matched = re.search(r'Created pod: (.+?)\n', job_description)
-                pod = matched.group(1)
-                output = subprocess.check_output(args=['kubectl', 'logs', pod])
                 return output
         except Exception as e:
             raise e
