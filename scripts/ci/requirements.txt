@@ -88,7 +88,7 @@ Sphinx-PyPI-upload
 sphinx_rtd_theme
 sqlalchemy
 statsd
-thrift
+thrift==0.9.3
 thrift_sasl
 unicodecsv
 zdesk
