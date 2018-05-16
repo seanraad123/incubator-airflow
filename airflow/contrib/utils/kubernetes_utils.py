@@ -133,7 +133,7 @@ def dict_to_env(source, task_instance):
         # have one value.
         inner = reduce((lambda x, y: y or x), enumerate_parameters(v, task_instance))
         if inner:
-            retval.append({'name': k, 'value': inner})
+            retval.append({'name': k, 'value': str(inner)})
     return retval
 
 
