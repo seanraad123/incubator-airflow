@@ -258,10 +258,9 @@ class KubernetesJobOperator(BaseOperator):
             if self.clean_up_successful_jobs:
                 self.clean_up(job_name)
 
-            # temporary comment out to see if this fixes anything
             # returning output if do_xcom_push is set
             # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
-            # if self.do_xcom_push:
-            #     return output
+            if self.do_xcom_push:
+                return output
         except Exception as e:
             raise e
