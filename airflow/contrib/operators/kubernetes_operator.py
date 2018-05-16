@@ -234,6 +234,8 @@ class KubernetesJobOperator(BaseOperator):
         return unique_job_name, yaml.safe_dump(kub_job_dict)
 
     def execute(self, context):
+        # debugging logging, next line is temporary
+        logging.getLogger().setLevel(logging.DEBUG)
         job_name, job_yaml_string = self.create_job_yaml(context)
         logging.info(job_yaml_string)
         self.instance_names.append(job_name)  # should happen once, but safety first!
