@@ -235,7 +235,7 @@ class KubernetesJobOperator(BaseOperator):
 
     def execute(self, context):
         job_name, job_yaml_string = self.create_job_yaml(context)
-        logging.info(job_yaml_string)
+        self.log.info(job_yaml_string)
         self.instance_names.append(job_name)  # should happen once, but safety first!
 
         with tempfile.NamedTemporaryFile(suffix='.yaml') as f:
