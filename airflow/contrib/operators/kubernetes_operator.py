@@ -40,7 +40,7 @@ class KubernetesJobOperator(BaseOperator):
         :type service_account_secret_name: string
         :param container_specs: Specification for the containers to launch. Environment variables will be
             added automatically, as well as the volume of the service_account_secret
-        :type container_specs: dictionary
+        :type container_specs: list
         :param env: Optional additional environment variables to provide to each container
         :type env: dictionary
         :param sleep_seconds_between_polling: number of seconds to sleep between polling
