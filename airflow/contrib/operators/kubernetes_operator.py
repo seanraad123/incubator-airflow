@@ -20,7 +20,6 @@ class KubernetesJobOperator(BaseOperator):
                  container_specs,
                  env=None,
                  sleep_seconds_between_polling=60,
-                 clean_up_successful_jobs=True,
                  do_xcom_push=False,  # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
                  *args,
                  **kwargs):
@@ -46,10 +45,6 @@ class KubernetesJobOperator(BaseOperator):
         :param sleep_seconds_between_polling: number of seconds to sleep between polling
             for job completion, defaults to 60
         :type sleep_seconds_between_polling: int
-        :param clean_up_successful_jobs: Flag to indicate whether or not successful jobs
-            and related pods should be deleted after completion. (Failed jobs and pods
-            are currently never deleted, they will have to be deleted manually.)
-        :type clean_up_successful_jobs: boolean
         :param do_xcom_push: return the stdout which also get set in xcom by airflow platform
         :type do_xcom_push: bool
         """
@@ -82,7 +77,6 @@ class KubernetesJobOperator(BaseOperator):
         # note: support for additional volumes will require an additional parameter
 
         self.sleep_seconds_between_polling = sleep_seconds_between_polling
-        self.clean_up_successful_jobs = clean_up_successful_jobs
         self.do_xcom_push = do_xcom_push
 
     @staticmethod
@@ -134,7 +128,6 @@ class KubernetesJobOperator(BaseOperator):
             service_account_secret_name=service_account_secret_name,
             container_specs=container_specs,
             sleep_seconds_between_polling=sleep_seconds_between_polling,
-            clean_up_successful_jobs=clean_up_successful_jobs,
             *args,
             **kwargs
         )
@@ -272,8 +265,7 @@ class KubernetesJobOperator(BaseOperator):
 
             self.log_container_logs(job_name)
 
-            if self.clean_up_successful_jobs:
-                self.clean_up(job_name)
+            self.clean_up(job_name)
 
             # returning output if do_xcom_push is set
             # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
