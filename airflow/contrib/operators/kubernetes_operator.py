@@ -158,6 +158,16 @@ class KubernetesJobOperator(BaseOperator):
         else:
             raise Exception('Job was killed')
 
+    def log_container_logs(self, job_name):
+        job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
+        matched = re.search(r'Created pod: (.+?)\n', job_description)
+        pod = matched.group(1)
+        output = subprocess.check_output(args=['kubectl', 'logs', pod])
+
+        # log output
+        logging.info('\n\n\nLOGGING OUTPUT FROM JOB: \n')
+        logging.info(output)
+
     def poll_job_completion(self, job_name):
         """
         Polls for completion of the created job.
@@ -176,6 +186,7 @@ class KubernetesJobOperator(BaseOperator):
             running_job_count = int(matched.group(1))
             failed_job_count = int(matched.group(2))
             if failed_job_count != 0:
+                self.log_container_logs(job_name)
                 raise Exception('%s has failed pods, failing task.' % job_name)
 
     def create_job_yaml(self, context):
@@ -259,14 +270,7 @@ class KubernetesJobOperator(BaseOperator):
         try:
             self.poll_job_completion(job_name)
 
-            job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
-            matched = re.search(r'Created pod: (.+?)\n', job_description)
-            pod = matched.group(1)
-            output = subprocess.check_output(args=['kubectl', 'logs', pod])
-
-            # log output
-            logging.info('\n\n\nLOGGING OUTPUT FROM JOB: \n')
-            logging.info(output)
+            self.log_container_logs(job_name)
 
             if self.clean_up_successful_jobs:
                 self.clean_up(job_name)
@@ -274,6 +278,11 @@ class KubernetesJobOperator(BaseOperator):
             # returning output if do_xcom_push is set
             # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
             if self.do_xcom_push:
+                job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
+                matched = re.search(r'Created pod: (.+?)\n', job_description)
+                pod = matched.group(1)
+                output = subprocess.check_output(args=['kubectl', 'logs', pod])
                 return output
+
         except Exception as e:
             raise e
