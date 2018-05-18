@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+from airflow.models import BaseOperator
+
 
 class XComParameter:
     """
@@ -20,22 +22,29 @@ class XComParameter:
         self.task_ids = task_ids
         self.key = xcom_key
 
-    def get_values(self, ti):
+    def get_values(self, ti, context=None):
         """
         Gets a list of parameter values
 
         :param ti: A TaskInstance or other object implementing xcom_pull
+        :param context: Optional context to pass when when giving an operator
+                        instead of a task instance
         :return: A container (list or tuple) with each returned value in the
                  same order as the task_ids provided in the constructor. If a
                  task_id has no value, it will be None.
         """
+        params = dict(task_ids=self.task_ids, key=self.key)
+        if isinstance(ti, BaseOperator):
+            if context is None:
+                raise ValueError("context is required when using BaseOperator instead of TaskInstance")
+            params['context'] = context
         if hasattr(self.task_ids, '__iter__') and not isinstance(self.task_ids, basestring):
-            return ti.xcom_pull(task_ids=self.task_ids, key=self.key)
+            return ti.xcom_pull(**params)
         else:
-            return [ti.xcom_pull(task_ids=self.task_ids, key=self.key)]
+            return [ti.xcom_pull(**params)]
 
 
-def enumerate_parameter_dict(source_dict, task_instance):
+def enumerate_parameter_dict(source_dict, task_instance, context=None):
     for key, value in source_dict.iteritems():
         if isinstance(value, dict):
             for inner_key, inner_value in value.iteritems():
@@ -44,14 +53,14 @@ def enumerate_parameter_dict(source_dict, task_instance):
             for v in value:
                 yield(key, v)
         elif isinstance(value, XComParameter):
-            for v in value.get_values(task_instance):
+            for v in value.get_values(task_instance, context=context):
                 if v is not None:
                     yield (key, v)
         else:
             yield (key, value)
 
 
-def enumerate_parameters(source, task_instance):
+def enumerate_parameters(source, task_instance, context=None):
     """
     Flatten inputs, evaluate XComs, be horrible.
 
@@ -59,6 +68,8 @@ def enumerate_parameters(source, task_instance):
 
     :param source: A thing, singular or iterable or XCom
     :param task_instance: A thing that can decode XComs
+    :param context: Optional context to pass when when giving an operator
+                    instead of a task instance
     :return: A generator of all the things, flattened
     """
     if source is None:
@@ -70,23 +81,23 @@ def enumerate_parameters(source, task_instance):
     if isinstance(source, (basestring, bool, int, long, float)):
         yield source
     elif isinstance(source, XComParameter):
-        for v in source.get_values(task_instance):
+        for v in source.get_values(task_instance, context=context):
             if v is not None:
                 yield v
     elif hasattr(source, "iterkeys"):
-        for k, v in enumerate_parameter_dict(source, task_instance):
+        for k, v in enumerate_parameter_dict(source, task_instance, context=context):
             if v is not None:
                 yield k
                 yield v
     elif hasattr(source, "__iter__"):
         if len(source) == 2:
-            for t in enumerate_parameters(source[1], task_instance):
+            for t in enumerate_parameters(source[1], task_instance, context=context):
                 if t is not None:
                     yield source[0]
                     yield t
         else:
             for inner_value in source:
-                for t in enumerate_parameters(inner_value, task_instance):
+                for t in enumerate_parameters(inner_value, task_instance, context=context):
                     if t is not None:
                         yield t
     elif hasattr(source, "__str__"):

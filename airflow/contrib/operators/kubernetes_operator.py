@@ -208,13 +208,13 @@ class KubernetesJobOperator(BaseOperator):
         instance_containers = [cs.copy() for cs in self.container_specs]
         for cs in instance_containers:
             if 'args' in cs:
-                cs['args'] = list(enumerate_parameters(cs['args'], self))
+                cs['args'] = list(enumerate_parameters(cs['args'], self, context=context))
             if 'command' in cs:
-                cs['command'] = list(enumerate_parameters(cs['command'], self))
+                cs['command'] = list(enumerate_parameters(cs['command'], self, context=context))
             # This assumes that env is a dictionary, which is possibly false
             cs['env'] = cs.get('env', {})
             cs['env'].update(instance_env)
-            cs['env'] = dict_to_env(cs['env'], self)
+            cs['env'] = dict_to_env(cs['env'], self, context=context)
 
             cs['volumeMounts'] = cs.get('volumeMounts', [])
             # do we already have the secret mount? if not, we should add it

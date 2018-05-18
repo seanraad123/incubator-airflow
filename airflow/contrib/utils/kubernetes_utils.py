@@ -111,7 +111,7 @@ class KubernetesContainerInformation:
         return ret
 
 
-def dict_to_env(source, task_instance):
+def dict_to_env(source, task_instance, context=None):
     """
     Converts an incoming dictionary into a list of name:value dictionaries, as
     is used in the "env" member of a container in Kubernetes YAML. Will expand
@@ -122,6 +122,8 @@ def dict_to_env(source, task_instance):
 
     :param source: Dict-like object, mapping string:string or string:XComParameter
     :param task_instance: Source of xcom_pull
+    :param context: Optional context to pass when when giving an operator
+                    instead of a task instance
     :return: list of name:value dictionaries
     """
 
@@ -131,7 +133,7 @@ def dict_to_env(source, task_instance):
             raise ValueError("Key was not a string")
         # we want to support XComs and such, but environment variables can only
         # have one value.
-        inner = reduce((lambda x, y: y or x), enumerate_parameters(v, task_instance))
+        inner = reduce((lambda x, y: y or x), enumerate_parameters(v, task_instance, context=context))
         if inner:
             retval.append({'name': k, 'value': str(inner)})
     return retval
