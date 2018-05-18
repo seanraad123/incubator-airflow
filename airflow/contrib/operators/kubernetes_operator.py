@@ -69,10 +69,10 @@ class KubernetesJobOperator(BaseOperator):
             '^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?(?:\.[a-z0-9](?:[-a-z0-9]*[a-z0-9])?)*$')
 
         for cs in self.container_specs:
-            if 1 != len(name_validator.findall(cs['metadata']['name'])):
+            if 1 != len(name_validator.findall(cs['name'])):
                 raise ValueError(
-                    "Invalid container name (/metadata/name). Validated with %s" %
-                    name_validator.pattern
+                    "Invalid container name: %s. Validated with %s" %
+                    (cs['name'], name_validator.pattern)
                 )
 
         self.env = env or {}
