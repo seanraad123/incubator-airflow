@@ -208,9 +208,9 @@ class KubernetesJobOperator(BaseOperator):
         instance_containers = [cs.copy() for cs in self.container_specs]
         for cs in instance_containers:
             if 'args' in cs:
-                cs['args'] = list(enumerate_parameters(cs['args'], self, context=context))
+                cs['args'] = list(map(str, enumerate_parameters(cs['args'], self, context=context)))
             if 'command' in cs:
-                cs['command'] = list(enumerate_parameters(cs['command'], self, context=context))
+                cs['command'] = list(map(str, enumerate_parameters(cs['command'], self, context=context)))
             # This assumes that env is a dictionary, which is possibly false
             cs['env'] = cs.get('env', {})
             cs['env'].update(instance_env)
