@@ -63,6 +63,12 @@ class KubernetesJobOperator(BaseOperator):
         name_validator = re.compile(
             '^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?(?:\.[a-z0-9](?:[-a-z0-9]*[a-z0-9])?)*$')
 
+        if 1 != len(name_validator.findall(self.job_name)):
+            raise ValueError(
+                "Invalid job_name: %s. Validated with %s" %
+                (self.job_name, name_validator.pattern)
+            )
+
         for cs in self.container_specs:
             if 1 != len(name_validator.findall(cs['name'])):
                 raise ValueError(
