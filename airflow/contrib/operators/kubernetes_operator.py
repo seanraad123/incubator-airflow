@@ -63,6 +63,18 @@ class KubernetesJobOperator(BaseOperator):
                 self.container_specs.append(cs.to_dict())
             else:
                 self.container_specs.append(cs)
+
+        # this expression came out of a docker runtime message
+        name_validator = re.compile(
+            '^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?(?:\.[a-z0-9](?:[-a-z0-9]*[a-z0-9])?)*$')
+
+        for cs in self.container_specs:
+            if 1 != len(name_validator.findall(cs['metadata']['name'])):
+                raise ValueError(
+                    "Invalid container name (/metadata/name). Validated with %s" %
+                    name_validator.pattern
+                )
+
         self.env = env or {}
         self.env['GOOGLE_APPLICATION_CREDENTIALS'] = '/%s/key.json' % service_account_secret_name
         self.env['AIRFLOW_VERSION'] = airflow_version
