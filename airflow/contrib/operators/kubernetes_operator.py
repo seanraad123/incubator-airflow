@@ -19,7 +19,7 @@ class KubernetesJobOperator(BaseOperator):
                  service_account_secret_name,
                  container_specs,
                  env=None,
-                 sleep_seconds_between_polling=60,
+                 sleep_seconds_between_polling=15,
                  do_xcom_push=False,  # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
                  *args,
                  **kwargs):
