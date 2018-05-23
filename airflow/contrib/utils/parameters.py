@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from airflow.models import BaseOperator
 
 
-class XComParameter:
+class XComParameter(object):
     """
     A parameter value that will be read from an XCom on execution of a task.
 
