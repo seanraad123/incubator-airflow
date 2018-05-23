@@ -69,7 +69,7 @@ def generate_kubernetes_job_yaml(job_name,
     return template.render(job_yaml_dictionary)
 
 
-class KubernetesContainerInformation:
+class KubernetesContainerInformation(object):
     """
     Information for an individual container,
     used to generate Kubernetes Job yamls.
@@ -111,6 +111,12 @@ class KubernetesContainerInformation:
         return ret
 
 
+class KubernetesSecretParameter(object):
+    def __init__(self, secret_key_name, secret_key_key):
+        self.secret_key_name = secret_key_name
+        self.secret_key_key = secret_key_key
+
+
 def dict_to_env(source, task_instance, context=None):
     """
     Converts an incoming dictionary into a list of name:value dictionaries, as
@@ -132,14 +138,21 @@ def dict_to_env(source, task_instance, context=None):
         if not isinstance(k, basestring):
             raise ValueError("Key was not a string")
 
-        # we may receive dicts to be interpreted by Kubernetes. don't mess with those
-        if isinstance(v, dict):
-            inner = v
+        if isinstance(v, KubernetesSecretParameter):
+            retval.append({
+                'name': k,
+                'value_from': {
+                    'secretKeyRef': {'name': v.secret_key_name, 'key': v.secret_key_key}
+                }})
         else:
-            # support XComs and such; environment variables can only have one value.
-            inner = str(reduce((lambda x, y: y or x), enumerate_parameters(v, task_instance, context=context)))
-        if inner:
-            retval.append({'name': k, 'value': inner})
+            # we may receive dicts to be interpreted by Kubernetes. don't mess with those
+            if isinstance(v, dict):
+                inner = v
+            else:
+                # support XComs and such; environment variables can only have one value.
+                inner = str(reduce((lambda x, y: y or x), enumerate_parameters(v, task_instance, context=context)))
+            if inner:
+                retval.append({'name': k, 'value': inner})
     return retval
 
 

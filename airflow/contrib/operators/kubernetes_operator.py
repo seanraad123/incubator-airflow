@@ -1,7 +1,8 @@
 from airflow import configuration
 from airflow.models import BaseOperator
 from airflow.version import version as airflow_version
-from airflow.contrib.utils.kubernetes_utils import dict_to_env, uniquify_job_name, deuniquify_job_name
+from airflow.contrib.utils.kubernetes_utils import dict_to_env, uniquify_job_name, deuniquify_job_name, \
+    KubernetesSecretParameter
 from airflow.contrib.utils.parameters import enumerate_parameters
 import logging
 import re
@@ -211,18 +212,14 @@ class KubernetesJobOperator(BaseOperator):
         instance_env['AIRFLOW_ENABLE_XCOM_PICKLING'] = configuration.getboolean('core', 'enable_xcom_pickling')
         instance_env['KUBERNETES_JOB_NAME'] = unique_job_name
         instance_env['AIRFLOW_MYSQL_HOST'] = '127.0.0.1'
-        instance_env['AIRFLOW_MYSQL_USERNAME'] = {
-            'valueFrom': {
-                'secretKeyRef': {
-                    'name': 'airflow-cloudsql-db-credentials',
-                    'key': 'username',
-                }}}
-        instance_env['AIRFLOW_MYSQL_PASSWORD'] = {
-            'valueFrom': {
-                'secretKeyRef': {
-                    'name': 'airflow-cloudsql-db-credentials',
-                    'key': 'password',
-                }}}
+        instance_env['AIRFLOW_MYSQL_USERNAME'] = KubernetesSecretParameter(
+            secret_key_name='airflow-cloudsql-db-credentials',
+            secret_key_key='username'
+        )
+        instance_env['AIRFLOW_MYSQL_PASSWORD'] = KubernetesSecretParameter(
+            secret_key_name='airflow-cloudsql-db-credentials',
+            secret_key_key='password'
+        )
 
         # Make a copy of all the containers.
         # Expand collections and apply XComs in args and/or command
