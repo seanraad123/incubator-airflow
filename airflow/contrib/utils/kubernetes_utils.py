@@ -131,11 +131,15 @@ def dict_to_env(source, task_instance, context=None):
     for k, v in source.iteritems():
         if not isinstance(k, basestring):
             raise ValueError("Key was not a string")
-        # we want to support XComs and such, but environment variables can only
-        # have one value.
-        inner = reduce((lambda x, y: y or x), enumerate_parameters(v, task_instance, context=context))
+
+        # we may receive dicts to be interpreted by Kubernetes. don't mess with those
+        if isinstance(v, dict):
+            inner = v
+        else:
+            # support XComs and such; environment variables can only have one value.
+            inner = str(reduce((lambda x, y: y or x), enumerate_parameters(v, task_instance, context=context)))
         if inner:
-            retval.append({'name': k, 'value': str(inner)})
+            retval.append({'name': k, 'value': inner})
     return retval
 
 

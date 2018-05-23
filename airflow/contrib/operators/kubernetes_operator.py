@@ -85,6 +85,10 @@ class KubernetesJobOperator(BaseOperator):
         self.sleep_seconds_between_polling = sleep_seconds_between_polling
         self.do_xcom_push = do_xcom_push
 
+        # TODO: dangermike (2018-05-22) get this from... somewhere else
+        self.cloudsql_instance_creds = 'airflow-cloudsql-instance-credentials'
+        self.cloudsql_db_creds = 'airflow-cloudsql-db-credentials'
+
     @staticmethod
     def from_job_yaml(job_yaml_string,
                       service_account_secret_name=None,
@@ -206,12 +210,25 @@ class KubernetesJobOperator(BaseOperator):
         instance_env['AIRFLOW_EXECUTION_DATE'] = context['execution_date'].isoformat()
         instance_env['AIRFLOW_ENABLE_XCOM_PICKLING'] = configuration.getboolean('core', 'enable_xcom_pickling')
         instance_env['KUBERNETES_JOB_NAME'] = unique_job_name
+        instance_env['AIRFLOW_MYSQL_HOST'] = '127.0.0.1'
+        instance_env['AIRFLOW_MYSQL_USERNAME'] = {
+            'valueFrom': {
+                'secretKeyRef': {
+                    'name': 'airflow-cloudsql-db-credentials',
+                    'key': 'username',
+                }}}
+        instance_env['AIRFLOW_MYSQL_PASSWORD'] = {
+            'valueFrom': {
+                'secretKeyRef': {
+                    'name': 'airflow-cloudsql-db-credentials',
+                    'key': 'password',
+                }}}
 
         # Make a copy of all the containers.
         # Expand collections and apply XComs in args and/or command
         # Apply the instance environment variables
         # Add in the secrets volume
-        instance_containers = [cs.copy() for cs in self.container_specs]
+        instance_containers = [cs.copy() for cs in self.container_specs if cs['name'] != 'cloudsql-proxy']
         for cs in instance_containers:
             if 'args' in cs:
                 cs['args'] = list(map(str, enumerate_parameters(cs['args'], self, context=context)))
@@ -232,6 +249,19 @@ class KubernetesJobOperator(BaseOperator):
                     'readOnly': True,
                 })
 
+        instance_containers.append({
+            'image': 'gcr.io/cloudsql-docker/gce-proxy:1.11',
+            'name': 'cloudsql-proxy',
+            'command': [
+                '/cloud_sql_proxy',
+                '-instances=bluecore-qa:us-east1:airflow-db=tcp:3306',
+                '-credential_file=/secrets/airflowcloudsql/credentials.json'],
+            'volumeMounts': [{
+                'mountPath': '/secrets/airflowcloudsql',
+                'name': 'airflow-cloudsql-instance-credentials',
+                'readOnly': True}]
+        })
+
         kub_job_dict = {
             'apiVersion': 'batch/v1',
             'kind': 'Job',
@@ -240,12 +270,20 @@ class KubernetesJobOperator(BaseOperator):
                 'template': {
                     'spec': {
                         'containers': instance_containers,
-                        'volumes': [{
-                            'name': self.service_account_secret_name,
-                            'secret': {
-                                'secretName': self.service_account_secret_name,
+                        'volumes': [
+                            {
+                                'name': self.service_account_secret_name,
+                                'secret': {
+                                    'secretName': self.service_account_secret_name,
+                                },
                             },
-                        }],
+                            {
+                                'name': 'airflow-cloudsql-instance-credentials',
+                                'secret': {
+                                    'secretName': 'airflow-cloudsql-instance-credentials'
+                                }
+                            }
+                        ],
                         'restartPolicy': 'Never'
                     }
                 },
