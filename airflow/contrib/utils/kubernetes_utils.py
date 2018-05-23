@@ -141,7 +141,7 @@ def dict_to_env(source, task_instance, context=None):
         if isinstance(v, KubernetesSecretParameter):
             retval.append({
                 'name': k,
-                'value_from': {
+                'valueFrom': {
                     'secretKeyRef': {'name': v.secret_key_name, 'key': v.secret_key_key}
                 }})
         else:
