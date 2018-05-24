@@ -254,7 +254,9 @@ class KubernetesJobOperator(BaseOperator):
                             if 'running' in cs['state']
                         ]
                         for cname in live_containers:
-                            subprocess.check_call(['kubectl', 'exec', pod['metadata']['name'], '-c', cname, 'kill', '1'])
+                            # there is a race condition between reading the status and trying to kill the running
+                            # container. ignore the return code to duck the issue.
+                            subprocess.call(['kubectl', 'exec', pod['metadata']['name'], '-c', cname, 'kill', '1'])
 
     def create_job_yaml(self, context):
         """
