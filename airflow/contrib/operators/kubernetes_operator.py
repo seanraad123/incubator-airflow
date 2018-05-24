@@ -219,26 +219,27 @@ class KubernetesJobOperator(BaseOperator):
                 # Dependent containers don't count.
                 # If there are no pods left running anything, we are done here. Cleaning up
                 # dependent containers will be left to the top-level `finally` block down below.
-                live_pods = 0
+                has_live = False
                 for pod in pod_output['items']:
-                    # exclude non-running pods
-                    if 'Running' != pod['status']['phase']:
-                        continue
-
-                    live_pods += 1
-                    # get all of the independent containers that are still alive (running or waiting)
-                    independent_live = [
-                        cs['name']
-                        for cs
-                        in pod['status']['containerStatuses']
-                        if 'terminated' not in cs['state'] and cs['name'] not in dependent_containers
-                    ]
-                    # if there are none, consider the pod dead
-                    if len(independent_live) == 0:
-                        live_pods -= 1
+                    if pod['status']['phase'] in {'Pending', 'Unknown'}:
+                        # we haven't run yet
+                        has_live = True
+                        break
+                    elif 'Running' == pod['status']['phase']:
+                        # get all of the independent containers that are still alive (running or waiting)
+                        independent_live = [
+                            cs['name']
+                            for cs
+                            in pod['status']['containerStatuses']
+                            if 'terminated' not in cs['state'] and cs['name'] not in dependent_containers
+                        ]
+                        # if there are none, consider the pod dead
+                        if len(independent_live) > 0:
+                            has_live = True
+                            break
 
                 # we have no live pods. end the job and return ok
-                if live_pods == 0:
+                if not has_live:
                     logging.info('No live, independent pods left. Exiting poll loop.')
                     return pod_output
         finally:
