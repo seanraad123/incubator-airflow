@@ -163,17 +163,32 @@ class KubernetesJobOperator(BaseOperator):
         else:
             raise Exception('Job was killed')
 
-    def log_container_logs(self, job_name):
-        job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
-        matched = re.search(r'Created pod: (.+?)\n', job_description)
-        pod = matched.group(1)
-        output = subprocess.check_output(args=['kubectl', 'logs', pod])
+    def get_pods(self, job_name):
+        return json.loads(subprocess.check_output(args=[
+            'kubectl', 'get', 'pods', '-o', 'json', '-l', 'job-name==%s' % job_name]))
 
-        # log output
-        logging.info('\n\n\nLOGGING OUTPUT FROM JOB: \n')
-        logging.info(output)
+    def log_container_logs(self, job_name, pod_output=None):
+        """
+        Reads the logs from each container in each pod in the job, re-logs them back
 
-    def poll_job_completion(self, job_name, dependent_containers=set('cloudsql_proxy')):
+        :param job_name: job that owns the pods with the containers we want to log
+        :param pod_output: Result of get_pods(job_name) call. If None, will be
+                           requested. This is a convenience so we can share/
+                           reuse the results of get_pods()
+        :return:
+        """
+        pod_output = pod_output or self.get_pods(job_name)
+        for pod in pod_output['items']:
+            pod_name = pod['metadata']['name']
+            for container in pod['spec']['containers']:
+                container_name = container['name']
+                extra = dict(pod=pod_name, container=container_name)
+                logging.info('LOGGING OUTPUT FROM JOB [%s/%s]:' % (pod_name, container_name), extra=extra)
+                output = subprocess.check_output(args=['kubectl', 'logs', pod_name, container_name])
+                for line in output.splitlines():
+                    logging.info(line, extra=extra)
+
+    def poll_job_completion(self, job_name, dependent_containers=set('cloudsql-proxy')):
         """
         Polls for completion of the created job.
         Sleeps for sleep_seconds_between_polling between polling.
@@ -186,8 +201,7 @@ class KubernetesJobOperator(BaseOperator):
             while True:
                 time.sleep(self.sleep_seconds_between_polling)
 
-                pod_output = json.loads(subprocess.check_output(args=[
-                    'kubectl', 'get', 'pods', '-o', 'json', '-l', 'job-name==%s' % job_name]))
+                pod_output = self.get_pods(job_name)
                 job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
                 matched = re.search(r'(\d+) Running / \d+ Succeeded / (\d+) Failed', job_description)
                 logging.info('Current status is: %s' % matched.group(0))
@@ -199,7 +213,7 @@ class KubernetesJobOperator(BaseOperator):
                     raise Exception('%s has failed pods, failing task.' % job_name)
 
                 if running_job_count == 0:
-                    return
+                    return pod_output
 
                 # Determine if we have any containers left running in each pod of the job.
                 # Dependent containers don't count.
@@ -226,7 +240,7 @@ class KubernetesJobOperator(BaseOperator):
                 # we have no live pods. end the job and return ok
                 if live_pods == 0:
                     logging.info('No live, independent pods left. Exiting poll loop.')
-                    return
+                    return pod_output
         finally:
             if pod_output:
                 # let's clean up all our old pods. we'll kill the entry point (PID 1) in each running container
@@ -349,20 +363,22 @@ class KubernetesJobOperator(BaseOperator):
             logging.info(result)
 
         try:
-            self.poll_job_completion(job_name)
+            pod_output = self.poll_job_completion(job_name)
+            pod_output = pod_output or self.get_pods(job_name)  # if we didn't get it for some reason
 
-            self.log_container_logs(job_name)
+            self.log_container_logs(job_name, pod_output=pod_output)
 
             self.clean_up(job_name)
 
             # returning output if do_xcom_push is set
             # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
             if self.do_xcom_push:
-                job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
-                matched = re.search(r'Created pod: (.+?)\n', job_description)
-                pod = matched.group(1)
-                output = subprocess.check_output(args=['kubectl', 'logs', pod])
-                return output
-
-        except Exception as e:
-            raise e
+                for pod in pod_output['items']:
+                    pod_name = pod['metadata']['name']
+                    for container in pod['spec']['containers']:
+                        container_name = container['name']
+                        if container_name != 'cloudsql-proxy':  # hack
+                            return subprocess.check_output(args=[
+                                'kubectl', 'logs', pod_name, container_name])
+        except Exception:
+            raise
