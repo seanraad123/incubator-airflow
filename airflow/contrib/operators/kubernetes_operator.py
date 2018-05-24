@@ -226,12 +226,12 @@ class KubernetesJobOperator(BaseOperator):
                         continue
 
                     live_pods += 1
-                    # get all of the independent containers that are still alive
+                    # get all of the independent containers that are still alive (running or waiting)
                     independent_live = [
                         cs['name']
                         for cs
                         in pod['status']['containerStatuses']
-                        if 'running' in cs['state'] and cs['name'] not in dependent_containers
+                        if 'terminated' not in cs['state'] and cs['name'] not in dependent_containers
                     ]
                     # if there are none, consider the pod dead
                     if len(independent_live) == 0:
