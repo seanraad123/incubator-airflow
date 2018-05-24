@@ -188,7 +188,7 @@ class KubernetesJobOperator(BaseOperator):
                 for line in output.splitlines():
                     logging.info(line, extra=extra)
 
-    def poll_job_completion(self, job_name, dependent_containers=set('cloudsql-proxy')):
+    def poll_job_completion(self, job_name, dependent_containers={'cloudsql-proxy'}):
         """
         Polls for completion of the created job.
         Sleeps for sleep_seconds_between_polling between polling.
