@@ -4,6 +4,7 @@ from airflow.version import version as airflow_version
 from airflow.contrib.utils.kubernetes_utils import dict_to_env, uniquify_job_name, deuniquify_job_name, \
     KubernetesSecretParameter
 from airflow.contrib.utils.parameters import enumerate_parameters
+import json
 import logging
 import re
 import subprocess
@@ -172,26 +173,72 @@ class KubernetesJobOperator(BaseOperator):
         logging.info('\n\n\nLOGGING OUTPUT FROM JOB: \n')
         logging.info(output)
 
-    def poll_job_completion(self, job_name):
+    def poll_job_completion(self, job_name, dependent_containers=set('cloudsql_proxy')):
         """
         Polls for completion of the created job.
         Sleeps for sleep_seconds_between_polling between polling.
         Any failed pods will raise an error and fail the KubernetesJobOperator task.
         """
         logging.info('Polling for completion of job: %s' % job_name)
-        running_job_count = 1
-        while running_job_count > 0:
-            time.sleep(self.sleep_seconds_between_polling)
+        pod_output = None  # keeping this out here so we can reuse it in the "finally" clause
 
-            job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
-            matched = re.search(r'(\d+) Running / \d+ Succeeded / (\d+) Failed', job_description)
-            logging.info('Current status is: %s' % matched.group(0))
+        try:
+            while True:
+                time.sleep(self.sleep_seconds_between_polling)
 
-            running_job_count = int(matched.group(1))
-            failed_job_count = int(matched.group(2))
-            if failed_job_count != 0:
-                self.log_container_logs(job_name)
-                raise Exception('%s has failed pods, failing task.' % job_name)
+                pod_output = json.loads(subprocess.check_output(args=[
+                    'kubectl', 'get', 'pods', '-o', 'json', '-l', 'job-name==%s' % job_name]))
+                job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
+                matched = re.search(r'(\d+) Running / \d+ Succeeded / (\d+) Failed', job_description)
+                logging.info('Current status is: %s' % matched.group(0))
+
+                running_job_count = int(matched.group(1))
+                failed_job_count = int(matched.group(2))
+                if failed_job_count != 0:
+                    self.log_container_logs(job_name)
+                    raise Exception('%s has failed pods, failing task.' % job_name)
+
+                if running_job_count == 0:
+                    return
+
+                # Determine if we have any containers left running in each pod of the job.
+                # Dependent containers don't count.
+                # If there are no pods left running anything, we are done here. Cleaning up
+                # dependent containers will be left to the top-level `finally` block down below.
+                live_pods = 0
+                for pod in pod_output['items']:
+                    # exclude non-running pods
+                    if 'Running' != pod['status']['phase']:
+                        continue
+
+                    live_pods += 1
+                    # get all of the independent containers that are still alive
+                    independent_live = [
+                        cs['name']
+                        for cs
+                        in pod['status']['containerStatuses']
+                        if 'running' in cs['state'] and cs['name'] not in dependent_containers
+                    ]
+                    # if there are none, consider the pod dead
+                    if len(independent_live) == 0:
+                        live_pods -= 1
+
+                # we have no live pods. end the job and return ok
+                if live_pods == 0:
+                    logging.info('No live, independent pods left. Exiting poll loop.')
+                    return
+        finally:
+            if pod_output:
+                # let's clean up all our old pods. we'll kill the entry point (PID 1) in each running container
+                for pod in pod_output.get('items', []):
+                    live_containers = [
+                        cs['name']
+                        for cs
+                        in pod['status']['containerStatuses']
+                        if 'running' in cs['state']
+                    ]
+                    for cname in live_containers:
+                        subprocess.check_call(['kubectl', 'exec', pod['metadata']['name'], '-c', cname, 'kill', '1'])
 
     def create_job_yaml(self, context):
         """
