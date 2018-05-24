@@ -245,14 +245,16 @@ class KubernetesJobOperator(BaseOperator):
             if pod_output:
                 # let's clean up all our old pods. we'll kill the entry point (PID 1) in each running container
                 for pod in pod_output.get('items', []):
-                    live_containers = [
-                        cs['name']
-                        for cs
-                        in pod['status']['containerStatuses']
-                        if 'running' in cs['state']
-                    ]
-                    for cname in live_containers:
-                        subprocess.check_call(['kubectl', 'exec', pod['metadata']['name'], '-c', cname, 'kill', '1'])
+                    # if we never got to running, there won't be containerStatuses
+                    if 'containerStatuses' in pod['status']:
+                        live_containers = [
+                            cs['name']
+                            for cs
+                            in pod['status']['containerStatuses']
+                            if 'running' in cs['state']
+                        ]
+                        for cname in live_containers:
+                            subprocess.check_call(['kubectl', 'exec', pod['metadata']['name'], '-c', cname, 'kill', '1'])
 
     def create_job_yaml(self, context):
         """
