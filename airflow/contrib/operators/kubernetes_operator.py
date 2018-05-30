@@ -328,12 +328,7 @@ class KubernetesJobOperator(BaseOperator):
         kub_job_dict = {
             'apiVersion': 'batch/v1',
             'kind': 'Job',
-            'metadata': {
-                'name': unique_job_name,
-                'labels': {
-                   'source': 'airflow',
-                },
-            },
+            'metadata': { 'name': unique_job_name },
             'spec': {
                 'template': {
                     'spec': {
