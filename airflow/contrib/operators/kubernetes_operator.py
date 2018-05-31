@@ -18,8 +18,8 @@ class KubernetesJobOperator(BaseOperator):
 
     def __init__(self,
                  job_name,
-                 service_account_secret_name,
                  container_specs,
+                 service_account_secret_name=None,
                  env=None,
                  sleep_seconds_between_polling=15,
                  do_xcom_push=False,  # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
@@ -37,7 +37,7 @@ class KubernetesJobOperator(BaseOperator):
 
         :param job_name: Name of the Kubernetes job. Will be suffixed at runtime
         :type job_name: string
-        :param service_account_secret_name: Secret to use
+        :param service_account_secret_name: Optional secret to use with Google APIs
         :type service_account_secret_name: string
         :param container_specs: Specification for the containers to launch. Environment variables will be
             added automatically, as well as the volume of the service_account_secret
@@ -54,6 +54,8 @@ class KubernetesJobOperator(BaseOperator):
         self.job_name = job_name
         self.instance_names = []
         self.service_account_secret_name = service_account_secret_name
+        if self.service_account_secret_name == '':
+            self.service_account_secret_name = None
         self.container_specs = []
         for cs in container_specs:
             if hasattr(cs, 'to_dict'):
@@ -79,7 +81,6 @@ class KubernetesJobOperator(BaseOperator):
                 )
 
         self.env = env or {}
-        self.env['GOOGLE_APPLICATION_CREDENTIALS'] = '/%s/key.json' % service_account_secret_name
         self.env['AIRFLOW_VERSION'] = airflow_version
 
         # note: support for additional volumes will require an additional parameter
@@ -137,8 +138,8 @@ class KubernetesJobOperator(BaseOperator):
 
         return KubernetesJobOperator(
             job_name,
-            service_account_secret_name=service_account_secret_name,
             container_specs=container_specs,
+            service_account_secret_name=service_account_secret_name,
             sleep_seconds_between_polling=sleep_seconds_between_polling,
             *args,
             **kwargs
@@ -286,6 +287,8 @@ class KubernetesJobOperator(BaseOperator):
             secret_key_name='airflow-cloudsql-db-credentials',
             secret_key_key='password'
         )
+        if self.service_account_secret_name is not None:
+            instance_env['GOOGLE_APPLICATION_CREDENTIALS'] = '/%s/key.json' % self.service_account_secret_name
 
         # Make a copy of all the containers.
         # Expand collections and apply XComs in args and/or command
@@ -304,13 +307,13 @@ class KubernetesJobOperator(BaseOperator):
 
             cs['volumeMounts'] = cs.get('volumeMounts', [])
             # do we already have the secret mount? if not, we should add it
-            cs['volumeMounts'] = cs.get('volumeMounts', [])
-            if 0 == len([x for x in cs['volumeMounts'] if self.service_account_secret_name == x.get('name')]):
-                cs['volumeMounts'].append({
-                    'name': self.service_account_secret_name,
-                    'mountPath': "/%s" % self.service_account_secret_name,
-                    'readOnly': True,
-                })
+            if self.service_account_secret_name is not None:
+                if 0 == len([x for x in cs['volumeMounts'] if self.service_account_secret_name == x.get('name')]):
+                    cs['volumeMounts'].append({
+                        'name': self.service_account_secret_name,
+                        'mountPath': "/%s" % self.service_account_secret_name,
+                        'readOnly': True,
+                    })
 
         instance_containers.append({
             'image': 'gcr.io/cloudsql-docker/gce-proxy:1.11',
@@ -319,11 +322,25 @@ class KubernetesJobOperator(BaseOperator):
                 '/cloud_sql_proxy',
                 '-instances=bluecore-qa:us-east1:airflow-db=tcp:3306',
                 '-credential_file=/secrets/airflowcloudsql/credentials.json'],
+            'env': [
+                {'name': 'AIRFLOW_CONTAINER_LIFECYLCE', 'value': 'dependent'}
+            ],
             'volumeMounts': [{
                 'mountPath': '/secrets/airflowcloudsql',
                 'name': 'airflow-cloudsql-instance-credentials',
                 'readOnly': True}]
         })
+
+        volumes = [{
+            'name': 'airflow-cloudsql-instance-credentials',
+            'secret': {'secretName': 'airflow-cloudsql-instance-credentials'}
+        }]
+
+        if self.service_account_secret_name is not None:
+            volumes.append({
+                'name': self.service_account_secret_name,
+                'secret': {'secretName': self.service_account_secret_name},
+            })
 
         kub_job_dict = {
             'apiVersion': 'batch/v1',
@@ -333,20 +350,7 @@ class KubernetesJobOperator(BaseOperator):
                 'template': {
                     'spec': {
                         'containers': instance_containers,
-                        'volumes': [
-                            {
-                                'name': self.service_account_secret_name,
-                                'secret': {
-                                    'secretName': self.service_account_secret_name,
-                                },
-                            },
-                            {
-                                'name': 'airflow-cloudsql-instance-credentials',
-                                'secret': {
-                                    'secretName': 'airflow-cloudsql-instance-credentials'
-                                }
-                            }
-                        ],
+                        'volumes': volumes,
                         'restartPolicy': 'Never'
                     }
                 },
