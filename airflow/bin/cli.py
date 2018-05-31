@@ -1426,7 +1426,7 @@ class CLIFactory(object):
         'flower_conf': Arg(
             ("-fc", "--flower_conf"),
             help="Configuration file for flower"),
-        'auth': Arg(
+        'flower_auth': Arg(
             ("--flower_auth"),
             help="Authorized email addresses for use in oauth"),
         'task_params': Arg(
