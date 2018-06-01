@@ -1072,7 +1072,7 @@ def flower(args):
 
     flower_auth = ''
     if args.flower_auth:
-        flower_auth = '--auth' + args.flower_auth
+        flower_auth = '--auth=' + args.flower_auth
 
     if args.daemon:
         pid, stdout, stderr, log_file = setup_locations("flower", args.pid, args.stdout, args.stderr, args.log_file)
@@ -1427,7 +1427,7 @@ class CLIFactory(object):
             ("-fc", "--flower_conf"),
             help="Configuration file for flower"),
         'flower_auth': Arg(
-            ("--flower_auth"),
+            ("-fa", "--flower_auth"),
             help="Authorized email addresses for use in oauth"),
         'task_params': Arg(
             ("-tp", "--task_params"),
