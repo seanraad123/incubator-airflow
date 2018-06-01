@@ -6,6 +6,7 @@ from airflow.contrib.utils.kubernetes_utils import dict_to_env, uniquify_job_nam
 from airflow.contrib.utils.parameters import enumerate_parameters
 import json
 import logging
+import os
 import re
 import subprocess
 import tempfile
@@ -316,7 +317,7 @@ class KubernetesJobOperator(BaseOperator):
                     })
 
         instance_containers.append({
-            'image': 'gcr.io/cloudsql-docker/gce-proxy:1.11',
+            'image': os.environ.get('AIRFLOW_GOOGLE_CLOUDSQL_PROXY_IMAGE', 'gcr.io/cloudsql-docker/gce-proxy:1.11'),
             'name': 'cloudsql-proxy',
             'command': [
                 '/cloud_sql_proxy',
