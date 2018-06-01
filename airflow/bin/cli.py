@@ -1070,6 +1070,10 @@ def flower(args):
     if args.flower_conf:
         flower_conf = '--conf=' + args.flower_conf
 
+    flower_auth = ''
+    if args.flower_auth:
+        flower_auth = '--auth=' + args.flower_auth
+
     if args.daemon:
         pid, stdout, stderr, log_file = setup_locations("flower", args.pid, args.stdout, args.stderr, args.log_file)
         stdout = open(stdout, 'w+')
@@ -1082,7 +1086,7 @@ def flower(args):
         )
 
         with ctx:
-            os.execvp("flower", ['flower', '-b', broka, address, port, api, flower_conf])
+            os.execvp("flower", ['flower', '-b', broka, address, port, api, flower_conf, flower_auth])
 
         stdout.close()
         stderr.close()
@@ -1090,7 +1094,7 @@ def flower(args):
         signal.signal(signal.SIGINT, sigint_handler)
         signal.signal(signal.SIGTERM, sigint_handler)
 
-        os.execvp("flower", ['flower', '-b', broka, address, port, api, flower_conf])
+        os.execvp("flower", ['flower', '-b', broka, address, port, api, flower_conf, flower_auth])
 
 
 def kerberos(args):  # noqa
@@ -1422,6 +1426,9 @@ class CLIFactory(object):
         'flower_conf': Arg(
             ("-fc", "--flower_conf"),
             help="Configuration file for flower"),
+        'flower_auth': Arg(
+            ("-fa", "--flower_auth"),
+            help="Authorized email addresses for use in oauth"),
         'task_params': Arg(
             ("-tp", "--task_params"),
             help="Sends a JSON params dict to the task"),
@@ -1597,7 +1604,7 @@ class CLIFactory(object):
             'func': flower,
             'help': "Start a Celery Flower",
             'args': ('flower_hostname', 'flower_port', 'flower_conf', 'broker_api',
-                     'pid', 'daemon', 'stdout', 'stderr', 'log_file'),
+                     'pid', 'daemon', 'stdout', 'stderr', 'log_file', 'flower_auth'),
         }, {
             'func': version,
             'help': "Show the version",
