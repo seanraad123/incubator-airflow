@@ -378,17 +378,19 @@ class KubernetesJobOperator(BaseOperator):
 
             self.log_container_logs(job_name, pod_output=pod_output)
 
-            self.clean_up(job_name)
-
             # returning output if do_xcom_push is set
             # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
+            retval = None
             if self.do_xcom_push:
                 for pod in pod_output['items']:
                     pod_name = pod['metadata']['name']
                     for container in pod['spec']['containers']:
                         container_name = container['name']
                         if container_name != 'cloudsql-proxy':  # hack
-                            return subprocess.check_output(args=[
+                            retval = subprocess.check_output(args=[
                                 'kubectl', 'logs', pod_name, container_name])
+
+            self.clean_up(job_name)
+            return retval
         except Exception:
             raise
