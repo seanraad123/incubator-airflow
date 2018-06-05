@@ -86,7 +86,7 @@ class GoogleCloudBaseHook(BaseHook, LoggingMixin):
                 raise AirflowException('Legacy P12 key file are not supported, '
                                        'use a JSON key file.')
             else:
-                raise AirflowException('Unrecognised extension for key file.')
+                raise AirflowException('Unrecognised extension for key file: %s.' % key_path)
         else:
             if not scope:
                 raise AirflowException('Scope should be defined when using key JSON.')
