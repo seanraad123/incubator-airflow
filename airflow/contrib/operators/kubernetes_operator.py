@@ -229,14 +229,18 @@ class KubernetesJobOperator(BaseOperator):
                         break
                     elif 'Running' == pod['status']['phase']:
                         # get all of the independent containers that are still alive (running or waiting)
-                        independent_live = [
-                            cs['name']
-                            for cs
-                            in pod['status']['containerStatuses']
-                            if 'terminated' not in cs['state'] and cs['name'] not in dependent_containers
-                        ]
-                        # if there are none, consider the pod dead
-                        if len(independent_live) > 0:
+                        live_cnt = 0
+                        for cs in pod['status']['containerStatuses']:
+                            if cs['name'] in dependent_containers:
+                                pass
+                            elif 'terminated' in cs['state']:
+                                exit_code = int(cs['state']['terminated'].get('exitCode', 0))
+                                if exit_code > 0:
+                                    raise Exception('%s has failed pods, failing task.' % job_name)
+                            else:
+                                live_cnt += 1
+
+                        if live_cnt > 0:
                             has_live = True
                             break
 
