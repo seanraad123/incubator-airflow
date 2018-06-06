@@ -726,7 +726,8 @@ def webserver(args):
             '-b', args.hostname + ':' + str(args.port),
             '-n', 'airflow-webserver',
             '-p', str(pid),
-            '-c', 'airflow.www.gunicorn_config'
+            '-c', 'airflow.www.gunicorn_config',
+            '--forwarded-allow-ips', '*',
         ]
 
         if args.access_logfile:
@@ -757,6 +758,8 @@ def webserver(args):
             else:
                 while True:
                     time.sleep(1)
+
+        print("Starting server: " + ' '.join(run_args))
 
         if args.daemon:
             base, ext = os.path.splitext(pid)
