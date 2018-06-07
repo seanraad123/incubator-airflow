@@ -380,8 +380,6 @@ class KubernetesJobOperator(BaseOperator):
             pod_output = self.poll_job_completion(job_name)
             pod_output = pod_output or self.get_pods(job_name)  # if we didn't get it for some reason
 
-            self.log_container_logs(job_name, pod_output=pod_output)
-
             # returning output if do_xcom_push is set
             # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
             retval = None
@@ -394,7 +392,8 @@ class KubernetesJobOperator(BaseOperator):
                             retval = subprocess.check_output(args=[
                                 'kubectl', 'logs', pod_name, container_name])
 
-            self.clean_up(job_name)
             return retval
-        except Exception:
-            raise
+        finally:
+            self.log_container_logs(job_name, pod_output=pod_output)
+
+            self.clean_up(job_name)
