@@ -391,9 +391,7 @@ class KubernetesJobOperator(BaseOperator):
                         if container_name != 'cloudsql-proxy':  # hack
                             retval = subprocess.check_output(args=[
                                 'kubectl', 'logs', pod_name, container_name])
-
+            self.clean_up(job_name)
             return retval
         finally:
             self.log_container_logs(job_name, pod_output=pod_output)
-
-            self.clean_up(job_name)
