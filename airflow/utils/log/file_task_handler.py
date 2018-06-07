@@ -107,6 +107,11 @@ class FileTaskHandler(logging.Handler):
                 ti=ti,
                 worker_log_server_port=conf.get('celery', 'WORKER_LOG_SERVER_PORT')
             )
+            # TODO: remove
+            # debugging logs not showing up in DEV
+            log += 'LOG IS BEING FETCHED FROM HERE: \n'
+            log += url+'\n'
+
             log += "*** Log file isn't local.\n"
             log += "*** Fetching here: {url}\n".format(**locals())
             try:
