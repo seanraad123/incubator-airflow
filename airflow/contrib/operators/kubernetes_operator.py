@@ -376,6 +376,9 @@ class KubernetesJobOperator(BaseOperator):
             result = subprocess.check_output(args=['kubectl', 'apply', '-f', f.name])
             logging.info(result)
 
+        # Setting pod_output to None, this will prevent a log_container_logs error
+        # if polling fails and self.polling_job_completion is not able to return pod_output.
+        pod_output = None
         try:
             pod_output = self.poll_job_completion(job_name)
             pod_output = pod_output or self.get_pods(job_name)  # if we didn't get it for some reason
