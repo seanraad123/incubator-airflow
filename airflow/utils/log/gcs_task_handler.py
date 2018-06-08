@@ -114,35 +114,6 @@ class GCSTaskHandler(FileTaskHandler, LoggingMixin):
 
         return log
 
-    def read(self, task_instance, try_number=None):
-        """
-        Read logs of given task instance from local machine.
-        :param task_instance: task instance object
-        :param try_number: task instance try_number to read logs from. If None
-                           it returns all logs separated by try_number
-        :return: a list of logs
-        """
-        # Task instance increments its try number when it starts to run.
-        # So the log for a particular task try will only show up when
-        # try number gets incremented in DB, i.e logs produced the time
-        # after cli run and before try_number + 1 in DB will not be displayed.
-        logging.info('LOGGING FOR JESSICA. IN GCS TASK HANDLER.')
-        next_try = task_instance.try_number
-
-        if try_number is None:
-            try_numbers = list(range(next_try))
-        elif try_number < 0:
-            logs = ['Error fetching the logs. Try number {} is invalid.'.format(try_number)]
-            return logs
-        else:
-            try_numbers = [try_number]
-
-        logs = [''] * len(try_numbers)
-        for i, try_number in enumerate(try_numbers):
-            logs[i] += self._read(task_instance, try_number)
-
-        return logs
-
     def gcs_log_exists(self, remote_log_location):
         """
         Check if remote_log_location exists in remote storage
