@@ -97,11 +97,7 @@ class GCSTaskHandler(FileTaskHandler, LoggingMixin):
         log_relative_path = self._render_filename(ti, try_number + 1)
         remote_loc = os.path.join(self.remote_base, log_relative_path)
 
-        log = 'HERE I AM IN GCSTaskHandler'
-        log += 'remote loc is: %s' % remote_loc
-
         if self.gcs_log_exists(remote_loc):
-            log += 'remote log exists'
             # If GCS remote file exists, we do not fetch logs from task instance
             # local machine even if there are errors reading remote logs, as
             # remote_log will contain error message.
@@ -110,38 +106,9 @@ class GCSTaskHandler(FileTaskHandler, LoggingMixin):
                 remote_loc, remote_log)
         else:
             log += 'remote log doesnt exist'
-            # log = super(GCSTaskHandler, self)._read(ti, try_number)
+            log = super(GCSTaskHandler, self)._read(ti, try_number)
 
         return log
-
-    def read(self, task_instance, try_number=None):
-        """
-        Read logs of given task instance from local machine.
-        :param task_instance: task instance object
-        :param try_number: task instance try_number to read logs from. If None
-                           it returns all logs separated by try_number
-        :return: a list of logs
-        """
-        # Task instance increments its try number when it starts to run.
-        # So the log for a particular task try will only show up when
-        # try number gets incremented in DB, i.e logs produced the time
-        # after cli run and before try_number + 1 in DB will not be displayed.
-        logging.info('LOGGING FOR JESSICA. IN GCS TASK HANDLER.')
-        next_try = task_instance.try_number
-
-        if try_number is None:
-            try_numbers = list(range(next_try))
-        elif try_number < 0:
-            logs = ['Error fetching the logs. Try number {} is invalid.'.format(try_number)]
-            return logs
-        else:
-            try_numbers = [try_number]
-
-        logs = [''] * len(try_numbers)
-        for i, try_number in enumerate(try_numbers):
-            logs[i] += self._read(task_instance, try_number)
-
-        return logs
 
     def gcs_log_exists(self, remote_log_location):
         """

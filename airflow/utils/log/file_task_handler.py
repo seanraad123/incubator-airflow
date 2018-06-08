@@ -107,11 +107,6 @@ class FileTaskHandler(logging.Handler):
                 ti=ti,
                 worker_log_server_port=conf.get('celery', 'WORKER_LOG_SERVER_PORT')
             )
-            # TODO: remove
-            # debugging logs not showing up in DEV
-            log += 'LOG IS BEING FETCHED FROM HERE: \n'
-            log += url+'\n'
-
             log += "*** Log file isn't local.\n"
             log += "*** Fetching here: {url}\n".format(**locals())
             try:
@@ -144,7 +139,6 @@ class FileTaskHandler(logging.Handler):
         # So the log for a particular task try will only show up when
         # try number gets incremented in DB, i.e logs produced the time
         # after cli run and before try_number + 1 in DB will not be displayed.
-        logging.info('LOGGING FOR JESSICA. IN FILE TASK HANDLER.')
         next_try = task_instance.try_number
 
         if try_number is None:
