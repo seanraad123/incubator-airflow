@@ -379,9 +379,12 @@ class KubernetesJobOperator(BaseOperator):
         # Setting pod_output to None, this will prevent a log_container_logs error
         # if polling fails and self.polling_job_completion is not able to return pod_output.
         pod_output = None
+
+        success = False
         try:
             pod_output = self.poll_job_completion(job_name)
             pod_output = pod_output or self.get_pods(job_name)  # if we didn't get it for some reason
+            success = True
 
             # returning output if do_xcom_push is set
             # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
@@ -394,7 +397,13 @@ class KubernetesJobOperator(BaseOperator):
                         if container_name != 'cloudsql-proxy':  # hack
                             retval = subprocess.check_output(args=[
                                 'kubectl', 'logs', pod_name, container_name])
-            self.clean_up(job_name)
             return retval
         finally:
-            self.log_container_logs(job_name, pod_output=pod_output)
+            try:
+                # don't consider the job failed if this fails!
+                self.log_container_logs(job_name, pod_output=pod_output)
+            except Exception as ex:
+                logging.error("Failed to process container logs: %s" % ex.message, extra={'err': ex})
+
+            if success:
+                self.clean_up(job_name)
