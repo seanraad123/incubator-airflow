@@ -103,12 +103,10 @@ class GCSTaskHandler(FileTaskHandler, LoggingMixin):
             # If GCS remote file exists, we do not fetch logs from task instance
             # local machine even if there are errors reading remote logs, as
             # remote_log will contain error message.
-            logging.info('GCS READING FROM: %s' % remote_loc)
             remote_log = self.gcs_read(remote_loc, return_error=True)
             log = '*** Reading remote log from {}.\n{}\n'.format(
                 remote_loc, remote_log)
         else:
-            log += 'remote log doesnt exist'
             logging.info('REMOTE LOG DOES NOT EXIST')
             log = super(GCSTaskHandler, self)._read(ti, try_number)
 
@@ -120,6 +118,7 @@ class GCSTaskHandler(FileTaskHandler, LoggingMixin):
         :param remote_log_location: log's location in remote storage
         :return: True if location exists else False
         """
+        logging.info('GCS READING FROM: %s' % remote_log_location)
         try:
             bkt, blob = self.parse_gcs_url(remote_log_location)
             return self.hook.exists(bkt, blob)
