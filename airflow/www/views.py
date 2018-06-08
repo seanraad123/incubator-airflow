@@ -708,7 +708,7 @@ class Airflow(BaseView):
             handler = next((handler for handler in logger.handlers
                             if handler.name == task_log_reader), None)
 
-            print 'LOG STATEMENT FOR JESSICA. LOGGER: %s, TASK_LOG_READER: %s, HANDLER: %s' % (logger, task_log_reader, handler)
+            logging.info('LOG STATEMENT FOR JESSICA. LOGGER: %s, TASK_LOG_READER: %s, HANDLER: %s' % (logger, task_log_reader, handler))
             try:
                 ti.task = dag.get_task(ti.task_id)
                 logs = handler.read(ti)
