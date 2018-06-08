@@ -110,7 +110,7 @@ class GCSTaskHandler(FileTaskHandler, LoggingMixin):
                 remote_loc, remote_log)
         else:
             log += 'remote log doesnt exist'
-            # log = super(GCSTaskHandler, self)._read(ti, try_number)
+            log = super(GCSTaskHandler, self)._read(ti, try_number)
 
         return log
 
