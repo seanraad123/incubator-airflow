@@ -22,6 +22,8 @@ from airflow.exceptions import AirflowException
 from airflow.hooks.base_hook import BaseHook
 from airflow.utils.log.logging_mixin import LoggingMixin
 
+import logging
+
 
 class GoogleCloudBaseHook(BaseHook, LoggingMixin):
     """
@@ -60,9 +62,13 @@ class GoogleCloudBaseHook(BaseHook, LoggingMixin):
         """
         Returns the Credentials object for Google API
         """
+        logging.info('IN GCP API BASE HOOK GET CREDENTIALS')
         key_path = self._get_field('key_path', False)
+        logging.info('KEY PATH IS %s ' % key_path)
         keyfile_dict = self._get_field('keyfile_dict', False)
+        logging.info('KEYFILE DICT IS %s' % keyfile_dict)
         scope = self._get_field('scope', False)
+        logging.info('SCOPE IS %s' % scope)
 
         kwargs = {}
         if self.delegate_to:

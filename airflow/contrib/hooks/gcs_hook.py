@@ -18,6 +18,8 @@ from googleapiclient import errors
 
 from airflow.contrib.hooks.gcp_api_base_hook import GoogleCloudBaseHook
 
+import logging
+
 
 class GoogleCloudStorageHook(GoogleCloudBaseHook):
     """
@@ -142,7 +144,9 @@ class GoogleCloudStorageHook(GoogleCloudBaseHook):
             storage bucket.
         :type object: string
         """
+        logging.info('LOGGING GCS HOOK IN EXISTS')
         service = self.get_conn()
+        logging.info('LOGGING GCS HOOK SERVICE IS %s' % service)
         try:
             service \
                 .objects() \
