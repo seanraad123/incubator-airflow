@@ -120,6 +120,7 @@ class GoogleCloudBaseHook(BaseHook, LoggingMixin):
         service hook connection.
         """
         credentials = self._get_credentials()
+        logging.info('CREDENTIALS ARE %s' % credentials)
         http = httplib2.Http()
         return credentials.authorize(http)
 
