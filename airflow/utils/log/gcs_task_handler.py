@@ -18,6 +18,8 @@ from airflow.exceptions import AirflowException
 from airflow.utils.log.logging_mixin import LoggingMixin
 from airflow.utils.log.file_task_handler import FileTaskHandler
 
+import logging
+
 
 class GCSTaskHandler(FileTaskHandler, LoggingMixin):
     """
@@ -101,11 +103,13 @@ class GCSTaskHandler(FileTaskHandler, LoggingMixin):
             # If GCS remote file exists, we do not fetch logs from task instance
             # local machine even if there are errors reading remote logs, as
             # remote_log will contain error message.
+            logging.info('GCS READING FROM: %s' % remote_loc)
             remote_log = self.gcs_read(remote_loc, return_error=True)
             log = '*** Reading remote log from {}.\n{}\n'.format(
                 remote_loc, remote_log)
         else:
             log += 'remote log doesnt exist'
+            logging.info('REMOTE LOG DOES NOT EXIST')
             log = super(GCSTaskHandler, self)._read(ti, try_number)
 
         return log
@@ -118,6 +122,7 @@ class GCSTaskHandler(FileTaskHandler, LoggingMixin):
         """
         try:
             bkt, blob = self.parse_gcs_url(remote_log_location)
+            logging.info('LOGGING BKT IS %s BLOB IS %s' % (bkt, blob))
             return self.hook.exists(bkt, blob)
         except Exception:
             pass
