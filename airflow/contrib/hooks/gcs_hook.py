@@ -144,9 +144,9 @@ class GoogleCloudStorageHook(GoogleCloudBaseHook):
             storage bucket.
         :type object: string
         """
-        logging.info('LOGGING GCS HOOK IN EXISTS')
+        logging.info('IN GCS HOOK EXISTS')
         service = self.get_conn()
-        logging.info('LOGGING GCS HOOK SERVICE IS %s' % service)
+        logging.info('SERVICE IS %s' % service)
         try:
             service \
                 .objects() \
