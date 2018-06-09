@@ -18,6 +18,8 @@ from googleapiclient import errors
 
 from airflow.contrib.hooks.gcp_api_base_hook import GoogleCloudBaseHook
 
+import logging
+
 
 class GoogleCloudStorageHook(GoogleCloudBaseHook):
     """

@@ -22,6 +22,8 @@ from airflow.exceptions import AirflowException
 from airflow.hooks.base_hook import BaseHook
 from airflow.utils.log.logging_mixin import LoggingMixin
 
+import logging
+
 
 class GoogleCloudBaseHook(BaseHook, LoggingMixin):
     """

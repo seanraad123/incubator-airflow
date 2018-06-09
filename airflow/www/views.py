@@ -710,8 +710,6 @@ class Airflow(BaseView):
 
             logging.info('LOG STATEMENT FOR JESSICA. LOGGER: %s, TASK_LOG_READER: %s, HANDLER: %s' % (logger, task_log_reader, handler))
             logging.info('LOGGER HANDLERS ARE: %s' % logger.handlers)
-
-            print 'motherfucker'
             try:
                 ti.task = dag.get_task(ti.task_id)
                 logs = handler.read(ti)
