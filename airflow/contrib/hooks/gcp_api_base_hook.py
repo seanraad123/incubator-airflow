@@ -62,13 +62,9 @@ class GoogleCloudBaseHook(BaseHook, LoggingMixin):
         """
         Returns the Credentials object for Google API
         """
-        logging.info('IN GCP API BASE HOOK GET CREDENTIALS')
         key_path = self._get_field('key_path', False)
-        logging.info('KEY PATH IS %s ' % key_path)
         keyfile_dict = self._get_field('keyfile_dict', False)
-        logging.info('KEYFILE DICT IS %s' % keyfile_dict)
         scope = self._get_field('scope', False)
-        logging.info('SCOPE IS %s' % scope)
 
         kwargs = {}
         if self.delegate_to:
@@ -88,6 +84,7 @@ class GoogleCloudBaseHook(BaseHook, LoggingMixin):
                 self.log.info('Getting connection using a JSON key file.')
                 credentials = ServiceAccountCredentials\
                     .from_json_keyfile_name(key_path, scopes)
+                logging.info('USING CREDENTIALS: %s' % credentials)
             elif key_path.endswith('.p12'):
                 raise AirflowException('Legacy P12 key file are not supported, '
                                        'use a JSON key file.')
@@ -125,6 +122,7 @@ class GoogleCloudBaseHook(BaseHook, LoggingMixin):
         service hook connection.
         """
         credentials = self._get_credentials()
+        logging.info('CREDENTIALS ARE %s' % credentials)
         http = httplib2.Http()
         return credentials.authorize(http)
 

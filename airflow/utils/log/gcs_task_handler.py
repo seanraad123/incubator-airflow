@@ -115,6 +115,7 @@ class GCSTaskHandler(FileTaskHandler, LoggingMixin):
         :param remote_log_location: log's location in remote storage
         :return: True if location exists else False
         """
+        logging.info('GCS READING FROM: %s' % remote_log_location)
         try:
             bkt, blob = self.parse_gcs_url(remote_log_location)
             return self.hook.exists(bkt, blob)
