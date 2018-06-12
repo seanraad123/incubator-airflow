@@ -301,6 +301,10 @@ class KubernetesJobOperator(BaseOperator):
         # Add in the secrets volume
         instance_containers = [cs.copy() for cs in self.container_specs if cs['name'] != 'cloudsql-proxy']
         for cs in instance_containers:
+            # all images should be stored in the triggeredmail container registry
+            # if us.gcr.io/..., full path not given, grab from trigggeredmail container registry
+            if 'us.gcr.io' not in cs['name']:
+                cs['name'] = '%s/%s' % ('us.gcr.io/triggeredmail', cs['name'])
             if 'args' in cs:
                 cs['args'] = list(map(str, enumerate_parameters(cs['args'], self, context=context)))
             if 'command' in cs:
