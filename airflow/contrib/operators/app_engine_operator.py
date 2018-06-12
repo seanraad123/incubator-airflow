@@ -45,6 +45,7 @@ class AppEngineOperator(BaseOperator):
         fail_file_name = '%s/failed' % self.job_id
         start_time = datetime.utcnow()
         i = 0
+        # Bluecore App Engine backend instances timeout after an hour
         while (datetime.utcnow() - start_time).total_seconds() < 3600:
             time.sleep(min(60, 5 * 2**i))
             i += 1
@@ -137,6 +138,7 @@ class AppEngineOperatorV2(BaseOperator):
     def poll_status(self, context):
         start_time = datetime.utcnow()
         i = 0
+        # Bluecore App Engine backend instances timeout after an hour
         while (datetime.utcnow() - start_time).total_seconds() < 3600:
             retval = self.xcom_pull(context=context, task_ids=self.task_id)
             if retval == '__EXCEPTION__':
