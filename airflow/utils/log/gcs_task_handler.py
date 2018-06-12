@@ -18,8 +18,6 @@ from airflow.exceptions import AirflowException
 from airflow.utils.log.logging_mixin import LoggingMixin
 from airflow.utils.log.file_task_handler import FileTaskHandler
 
-import logging
-
 
 class GCSTaskHandler(FileTaskHandler, LoggingMixin):
     """
@@ -107,7 +105,6 @@ class GCSTaskHandler(FileTaskHandler, LoggingMixin):
             log = '*** Reading remote log from {}.\n{}\n'.format(
                 remote_loc, remote_log)
         else:
-            logging.info('REMOTE LOG DOES NOT EXIST')
             log = super(GCSTaskHandler, self)._read(ti, try_number)
 
         return log
