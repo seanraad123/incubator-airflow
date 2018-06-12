@@ -325,7 +325,7 @@ class KubernetesJobOperator(BaseOperator):
             'name': 'cloudsql-proxy',
             'command': [
                 '/cloud_sql_proxy',
-                '-instances=bluecore-qa:us-east1:airflow-db=tcp:3306',
+                '-instances=%s=tcp:3306' % configuration.get('mysql', 'cloudsql_instance'),
                 '-credential_file=/secrets/airflowcloudsql/credentials.json'],
             'env': [
                 {'name': 'AIRFLOW_CONTAINER_LIFECYLCE', 'value': 'dependent'}
