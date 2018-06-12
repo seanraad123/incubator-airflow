@@ -98,20 +98,28 @@ class AppEngineOperatorV2(BaseOperator):
         hook = HttpHook(
             method='POST',
             http_conn_id=self.http_conn_id)
+
+        headers = {
+            'content-type': 'application/json',
+            'Accept': 'text/plain',
+            'X-Airflow-Dag-Id': self.dag_id,
+            'X-Airflow-Task-Id': self.task_id,
+            'X-Airflow-Execution-Date': context['execution_date'].isoformat(),
+            'X-Airflow-Enable-Xcom-Pickling': str(configuration.getboolean('core', 'enable_xcom_pickling')),
+            'X-Airflow-Mysql-Db': configuration.get('mysql', 'db'),
+            'X-Airflow-Mysql-User': configuration.get('mysql', 'username'),
+            'X-Airflow-Mysql-Password': configuration.get('mysql', 'password'),
+        }
+
+        if configuration.get('mysql', 'host') is not None:
+            headers['X-Airflow-Mysql-Host'] = configuration.get('mysql', 'host')
+
+        if configuration.get('mysql', 'cloudsql_instance') is not None:
+            headers['X-Airflow-Mysql-Cloudsql-Instance'] = configuration.get('mysql', 'cloudsql_instance')
+
         hook.run(
             endpoint='/api/airflow/schedule_job',
-            headers={
-                'content-type': 'application/json',
-                'Accept': 'text/plain',
-                'X-Airflow-Dag-Id': self.dag_id,
-                'X-Airflow-Task-Id': self.task_id,
-                'X-Airflow-Execution-Date': context['execution_date'].isoformat(),
-                'X-Airflow-Enable-Xcom-Pickling': str(configuration.getboolean('core', 'enable_xcom_pickling')),
-                'X-Airflow-Mysql-Host': configuration.get('mysql', 'host'),
-                'X-Airflow-Mysql-Db': configuration.get('mysql', 'db'),
-                'X-Airflow-Mysql-User': configuration.get('mysql', 'username'),
-                'X-Airflow-Mysql-Password': configuration.get('mysql', 'password'),
-            },
+            headers=headers,
             data=json.dumps(self.command_params),
             extra_options=None)
 
