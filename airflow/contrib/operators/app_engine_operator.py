@@ -79,6 +79,11 @@ def check_gcs_file_exists(file_name, google_cloud_conn_id, bucket):
 
 
 class AppEngineOperatorSync(BaseOperator):
+    """
+    AppEngineOperatorSync calls an API endpoint in App Engine and waits for a response. If the response has a 4xx or 5xx
+    status, the task is considered failed. If a body is included in the response, it will be stored in the
+    `return_value` XCom. JSON and YAML will be deserialized automatically.
+    """
     template_fields = ('command_name', 'command_params', 'job_id',)
 
     @apply_defaults
@@ -138,6 +143,10 @@ class AppEngineOperatorSync(BaseOperator):
 
 
 class AppEngineOperatorAsync(BaseOperator):
+    """
+    AppEngineOperatorAsync schedules a command on the App Engine task queue. Task completion is signalled by setting
+    the `return_value` in the command. If the return value is not set by the command, this will time out after an hour.
+    """
     template_fields = ('command_name', 'command_params', 'job_id',)
 
     @apply_defaults
