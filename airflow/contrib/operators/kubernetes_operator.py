@@ -284,6 +284,7 @@ class KubernetesJobOperator(BaseOperator):
         instance_env['AIRFLOW_ENABLE_XCOM_PICKLING'] = configuration.getboolean('core', 'enable_xcom_pickling')
         instance_env['KUBERNETES_JOB_NAME'] = unique_job_name
         instance_env['AIRFLOW_MYSQL_HOST'] = '127.0.0.1'
+        instance_env['AIRFLOW_MYSQL_DB'] = configuration.getboolean('mysql', 'db')
         instance_env['AIRFLOW_MYSQL_USERNAME'] = KubernetesSecretParameter(
             secret_key_name='airflow-cloudsql-db-credentials',
             secret_key_key='username'
@@ -329,7 +330,7 @@ class KubernetesJobOperator(BaseOperator):
             'name': 'cloudsql-proxy',
             'command': [
                 '/cloud_sql_proxy',
-                '-instances=bluecore-qa:us-east1:airflow-db=tcp:3306',
+                '-instances=%s=tcp:3306' % configuration.get('mysql', 'cloudsql_instance'),
                 '-credential_file=/secrets/airflowcloudsql/credentials.json'],
             'env': [
                 {'name': 'AIRFLOW_CONTAINER_LIFECYLCE', 'value': 'dependent'}
