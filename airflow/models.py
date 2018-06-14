@@ -3537,7 +3537,7 @@ class DAG(BaseDag, LoggingMixin):
         d['is_picklable'] = True
         try:
             dttm = datetime.utcnow()
-            pickled = pickle.dumps(self)
+            pickled = pickle.dumps(self, pickle.HIGHEST_PROTOCOL)
             d['pickle_len'] = len(pickled)
             d['pickling_duration'] = "{}".format(datetime.utcnow() - dttm)
         except Exception as e:
@@ -4073,7 +4073,7 @@ class XCom(Base, LoggingMixin):
             enable_pickling = configuration.getboolean('core', 'enable_xcom_pickling')
 
         if enable_pickling:
-            value = pickle.dumps(value)
+            value = pickle.dumps(value, pickle.HIGHEST_PROTOCOL)
         else:
             try:
                 value = json.dumps(value).encode('UTF-8')
