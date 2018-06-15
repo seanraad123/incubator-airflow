@@ -88,8 +88,6 @@ class KubernetesJobOperator(BaseOperator):
         self.env = env or {}
         self.env['AIRFLOW_VERSION'] = airflow_version
 
-        # note: support for additional volumes will require an additional parameter
-
         self.sleep_seconds_between_polling = sleep_seconds_between_polling
         self.do_xcom_push = do_xcom_push
 
@@ -364,8 +362,10 @@ class KubernetesJobOperator(BaseOperator):
                 'secret': {'secretName': self.service_account_secret_name},
             })
 
-        # add in all the volumes given by the user, assuming they don't conflict with the secrets volumes we created
-        volumes += [v for v in self.volumes if v['name'] not in {v['name'] for v in volumes}]
+        skip_names = {v['name'] for v in volumes}
+        for v in self.volumes:
+            if v['name'] not in skip_names:
+                volumes.append(v)
 
         kub_job_dict = {
             'apiVersion': 'batch/v1',
