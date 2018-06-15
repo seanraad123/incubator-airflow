@@ -141,10 +141,7 @@ class KubernetesJobOperator(BaseOperator):
             cs['env'] = env
             container_specs.append(cs)
 
-        if 'volumes' in job_data['spec']['template']['spec']:
-            volumes = job_data['spec']['template']['spec']['volumes']
-        else:
-            volumes = []
+        volumes = job_data['spec']['template']['spec'].get('volumes', [])
 
         return KubernetesJobOperator(
             job_name,
