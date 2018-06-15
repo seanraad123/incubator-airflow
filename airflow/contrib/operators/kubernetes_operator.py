@@ -20,8 +20,9 @@ class KubernetesJobOperator(BaseOperator):
     def __init__(self,
                  job_name,
                  container_specs,
-                 service_account_secret_name=None,
                  env=None,
+                 volumes=None,
+                 service_account_secret_name=None,
                  sleep_seconds_between_polling=15,
                  do_xcom_push=False,  # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
                  *args,
@@ -38,13 +39,16 @@ class KubernetesJobOperator(BaseOperator):
 
         :param job_name: Name of the Kubernetes job. Will be suffixed at runtime
         :type job_name: string
-        :param service_account_secret_name: Optional secret to use with Google APIs
-        :type service_account_secret_name: string
         :param container_specs: Specification for the containers to launch. Environment variables will be
             added automatically, as well as the volume of the service_account_secret
         :type container_specs: list
         :param env: Optional additional environment variables to provide to each container
         :type env: dictionary
+        :param volumes: Optional additional volumes to make available for mounts. See Kubernetes API documentation for
+            details. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#volume-v1-core
+        :type volumes: list[dictionary].
+        :param service_account_secret_name: Optional secret to use with Google APIs
+        :type service_account_secret_name: string
         :param sleep_seconds_between_polling: number of seconds to sleep between polling
             for job completion, defaults to 60
         :type sleep_seconds_between_polling: int
@@ -84,14 +88,14 @@ class KubernetesJobOperator(BaseOperator):
         self.env = env or {}
         self.env['AIRFLOW_VERSION'] = airflow_version
 
-        # note: support for additional volumes will require an additional parameter
-
         self.sleep_seconds_between_polling = sleep_seconds_between_polling
         self.do_xcom_push = do_xcom_push
 
         # TODO: dangermike (2018-05-22) get this from... somewhere else
         self.cloudsql_instance_creds = 'airflow-cloudsql-instance-credentials'
         self.cloudsql_db_creds = 'airflow-cloudsql-db-credentials'
+
+        self.volumes = volumes or []
 
     @staticmethod
     def from_job_yaml(job_yaml_string,
@@ -137,9 +141,12 @@ class KubernetesJobOperator(BaseOperator):
             cs['env'] = env
             container_specs.append(cs)
 
+        volumes = job_data['spec']['template']['spec'].get('volumes', [])
+
         return KubernetesJobOperator(
             job_name,
             container_specs=container_specs,
+            volumes=volumes,
             service_account_secret_name=service_account_secret_name,
             sleep_seconds_between_polling=sleep_seconds_between_polling,
             *args,
@@ -333,7 +340,7 @@ class KubernetesJobOperator(BaseOperator):
                 '-instances=%s=tcp:3306' % configuration.get('mysql', 'cloudsql_instance'),
                 '-credential_file=/secrets/airflowcloudsql/credentials.json'],
             'env': [
-                {'name': 'AIRFLOW_CONTAINER_LIFECYLCE', 'value': 'dependent'}
+                {'name': 'AIRFLOW_CONTAINER_LIFECYCLE', 'value': 'dependent'}
             ],
             'volumeMounts': [{
                 'mountPath': '/secrets/airflowcloudsql',
@@ -341,16 +348,21 @@ class KubernetesJobOperator(BaseOperator):
                 'readOnly': True}]
         })
 
-        volumes = [{
+        instance_volumes = [{
             'name': 'airflow-cloudsql-instance-credentials',
             'secret': {'secretName': 'airflow-cloudsql-instance-credentials'}
         }]
 
         if self.service_account_secret_name is not None:
-            volumes.append({
+            instance_volumes.append({
                 'name': self.service_account_secret_name,
                 'secret': {'secretName': self.service_account_secret_name},
             })
+
+        skip_names = {v['name'] for v in instance_volumes}
+        for v in self.volumes:
+            if v['name'] not in skip_names:
+                instance_volumes.append(v)
 
         kub_job_dict = {
             'apiVersion': 'batch/v1',
@@ -360,7 +372,7 @@ class KubernetesJobOperator(BaseOperator):
                 'template': {
                     'spec': {
                         'containers': instance_containers,
-                        'volumes': volumes,
+                        'volumes': instance_volumes,
                         'restartPolicy': 'Never'
                     }
                 },
