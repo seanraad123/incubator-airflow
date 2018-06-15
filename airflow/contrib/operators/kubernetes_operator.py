@@ -348,21 +348,21 @@ class KubernetesJobOperator(BaseOperator):
                 'readOnly': True}]
         })
 
-        volumes = [{
+        instance_volumes = [{
             'name': 'airflow-cloudsql-instance-credentials',
             'secret': {'secretName': 'airflow-cloudsql-instance-credentials'}
         }]
 
         if self.service_account_secret_name is not None:
-            volumes.append({
+            instance_volumes.append({
                 'name': self.service_account_secret_name,
                 'secret': {'secretName': self.service_account_secret_name},
             })
 
-        skip_names = {v['name'] for v in volumes}
+        skip_names = {v['name'] for v in instance_volumes}
         for v in self.volumes:
             if v['name'] not in skip_names:
-                volumes.append(v)
+                instance_volumes.append(v)
 
         kub_job_dict = {
             'apiVersion': 'batch/v1',
@@ -372,7 +372,7 @@ class KubernetesJobOperator(BaseOperator):
                 'template': {
                     'spec': {
                         'containers': instance_containers,
-                        'volumes': volumes,
+                        'volumes': instance_volumes,
                         'restartPolicy': 'Never'
                     }
                 },
