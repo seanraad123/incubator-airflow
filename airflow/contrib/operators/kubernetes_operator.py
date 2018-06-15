@@ -340,7 +340,7 @@ class KubernetesJobOperator(BaseOperator):
                 '-instances=%s=tcp:3306' % configuration.get('mysql', 'cloudsql_instance'),
                 '-credential_file=/secrets/airflowcloudsql/credentials.json'],
             'env': [
-                {'name': 'AIRFLOW_CONTAINER_LIFECYLCE', 'value': 'dependent'}
+                {'name': 'AIRFLOW_CONTAINER_LIFECYCLE', 'value': 'dependent'}
             ],
             'volumeMounts': [{
                 'mountPath': '/secrets/airflowcloudsql',
