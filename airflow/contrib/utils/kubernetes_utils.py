@@ -177,8 +177,8 @@ def uniquify_job_name(task_instance, context, run_timestamp=None):
             context['execution_date'].isoformat(),
             task_instance.dag_id,
             task_instance.task_id,
+            run_timestamp.isoformat(),
         ])).hexdigest()[:16],
-        str(int((run_timestamp - datetime(1970, 1, 1, 0, 0, 0)).total_seconds() * 1000))
     ])
 
 
