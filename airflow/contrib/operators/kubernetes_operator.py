@@ -302,6 +302,11 @@ class KubernetesJobOperator(BaseOperator):
         )
         if self.service_account_secret_name is not None:
             instance_env['GOOGLE_APPLICATION_CREDENTIALS'] = '/%s/key.json' % self.service_account_secret_name
+        if configuration.getboolean('scheduler', 'statsd_on'):
+            instance_env['STATSD_HOST'] = configuration.get('scheduler', 'statsd_host')
+            instance_env['STATSD_PORT'] = configuration.get('scheduler', 'statsd_port')
+            instance_env['STATSD_PREFIX'] = configuration.get('scheduler', 'statsd_prefix')
+
 
         # Make a copy of all the containers.
         # Expand collections and apply XComs in args and/or command
