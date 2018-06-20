@@ -58,11 +58,11 @@ if conf.getboolean('scheduler', 'statsd_on'):
     try:
         cls_name = conf.get('scheduler', 'statsd_class')
         if cls_name == 'datadog.dogstatsd.DogStatsd':
-            from datadog.dogstatsd import DogStatsd
-            statsd = DogStatsd(
+            from airflow.contrib.utils.dogstatsd_adapter import DogStatsdAdapter
+            statsd = DogStatsdAdapter(
                 host=conf.get('scheduler', 'statsd_host'),
                 port=conf.getint('scheduler', 'statsd_port'),
-                namespace=conf.get('scheduler', 'statsd_prefix'))
+                prefix=conf.get('scheduler', 'statsd_prefix'))
         else:
             components = cls_name.split('.')
             statsd_cls = __import__(components[0])
