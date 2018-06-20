@@ -57,18 +57,28 @@ if conf.getboolean('scheduler', 'statsd_on'):
     # will be thrown and we'll fall back to the basic statsd.StatsClient
     try:
         cls_name = conf.get('scheduler', 'statsd_class')
-        components = cls_name.split('.')
-        statsd_cls = __import__(components[0])
-        for comp in components[1:]:
-            statsd_cls = getattr(statsd_cls, comp)
+        if cls_name == 'datadog.dogstatsd.DogStatsd':
+            from datadog.dogstatsd import DogStatsd
+            statsd = DogStatsd(
+                host=conf.get('scheduler', 'statsd_host'),
+                port=conf.getint('scheduler', 'statsd_port'),
+                namespace=conf.get('scheduler', 'statsd_prefix'))
+        else:
+            components = cls_name.split('.')
+            statsd_cls = __import__(components[0])
+            for comp in components[1:]:
+                statsd_cls = getattr(statsd_cls, comp)
+
+            statsd = statsd_cls(
+                host=conf.get('scheduler', 'statsd_host'),
+                port=conf.getint('scheduler', 'statsd_port'),
+                prefix=conf.get('scheduler', 'statsd_prefix'))
     except AirflowConfigException:
         from statsd import StatsClient
-        statsd_cls = StatsClient
-
-    statsd = statsd_cls(
-        host=conf.get('scheduler', 'statsd_host'),
-        port=conf.getint('scheduler', 'statsd_port'),
-        prefix=conf.get('scheduler', 'statsd_prefix'))
+        statsd = StatsClient(
+            host=conf.get('scheduler', 'statsd_host'),
+            port=conf.getint('scheduler', 'statsd_port'),
+            prefix=conf.get('scheduler', 'statsd_prefix'))
     Stats = statsd
 else:
     Stats = DummyStatsLogger
