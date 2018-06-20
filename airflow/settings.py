@@ -24,6 +24,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from airflow import configuration as conf
+from airflow.exceptions import AirflowConfigException
 from airflow.logging_config import configure_logging
 
 log = logging.getLogger(__name__)
@@ -50,9 +51,21 @@ class DummyStatsLogger(object):
 Stats = DummyStatsLogger
 
 if conf.getboolean('scheduler', 'statsd_on'):
-    from statsd import StatsClient
+    statsd_cls = None
 
-    statsd = StatsClient(
+    # if statsd_class is provided, dynamically load it, if not provided, AirflowConfigException
+    # will be thrown and we'll fall back to the basic statsd.StatsClient
+    try:
+        cls_name = conf.get('scheduler', 'statsd_class')
+        components = cls_name.split('.')
+        statsd_cls = __import__(components[0])
+        for comp in components[1:]:
+            statsd_cls = getattr(statsd_cls, comp)
+    except AirflowConfigException:
+        from statsd import StatsClient
+        statsd_cls = StatsClient
+
+    statsd = statsd_cls(
         host=conf.get('scheduler', 'statsd_host'),
         port=conf.getint('scheduler', 'statsd_port'),
         prefix=conf.get('scheduler', 'statsd_prefix'))
