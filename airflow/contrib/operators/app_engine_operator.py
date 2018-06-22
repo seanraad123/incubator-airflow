@@ -4,6 +4,7 @@ from airflow.exceptions import AirflowException, AirflowTaskTimeout
 from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator, XCOM_RETURN_KEY
 from airflow.utils.decorators import apply_defaults
+from airflow.utils.kubernetes_utils import uniquify_job_name
 from datetime import datetime
 try:
     import ujson as json
@@ -83,6 +84,17 @@ class AppEngineOperatorSync(BaseOperator):
     AppEngineOperatorSync calls an API endpoint in App Engine and waits for a response. If the response has a 4xx or 5xx
     status, the task is considered failed. If a body is included in the response, it will be stored in the
     `return_value` XCom. JSON and YAML will be deserialized automatically.
+
+    :param task_id: Name of the task to appear in Airflow UI
+    :type task_id: str
+    :param command_name: Full name of the App Engine command to be called (e.g. engine.core.commands.ExCommand)
+    :type command_name: str
+    :param command_params: Named parameters of App Engine command to be called
+    :type command_params: dict
+    :param http_conn_id: ID mapped to the host to which the call is sent. Can be defined in Airflow UI
+    :type http_conn_id: str
+    :param kwargs: Named parameters to pass to BaseOperator constructor
+    :type kwargs: dict
     """
     template_fields = ('command_name', 'command_params', 'job_id',)
 
@@ -90,8 +102,8 @@ class AppEngineOperatorSync(BaseOperator):
     def __init__(self,
                  task_id,
                  command_name,
-                 command_params,
-                 http_conn_id='http_default',
+                 command_params={},
+                 http_conn_id='appengine',
                  **kwargs):
         super(AppEngineOperatorSync, self).__init__(task_id=task_id, **kwargs)
         self.http_conn_id = http_conn_id
@@ -106,6 +118,7 @@ class AppEngineOperatorSync(BaseOperator):
         headers = {
             'content-type': 'application/json',
             'Accept': 'application/json',
+            'X-Bluecore-Token': configuration.get('appengine', 'token'),
             # these are not necessary, but may make debugging easier later
             'X-Airflow-Dag-Id': self.dag_id,
             'X-Airflow-Task-Id': self.task_id,
@@ -118,11 +131,13 @@ class AppEngineOperatorSync(BaseOperator):
         if configuration.get('mysql', 'cloudsql_instance') is not None:
             headers['X-Airflow-Mysql-Cloudsql-Instance'] = configuration.get('mysql', 'cloudsql_instance')
 
+        post_data = {'params_dict': self.command_params}
+
         # this will throw on any 4xx or 5xx
         with hook.run(
             endpoint='/api/airflow/sync/%s' % self.command_name,
             headers=headers,
-            data=json.dumps(self.command_params),
+            data=json.dumps(post_data),
             extra_options=None
         ) as response:
             if response.content:
@@ -146,6 +161,19 @@ class AppEngineOperatorAsync(BaseOperator):
     """
     AppEngineOperatorAsync schedules a command on the App Engine task queue. Task completion is signalled by setting
     the `return_value` in the command. If the return value is not set by the command, this will time out after an hour.
+
+    :param task_id: Name of the task to appear in Airflow UI
+    :type task_id: str
+    :param command_name: Full name of the App Engine command to be called (e.g. engine.core.commands.ExCommand)
+    :type command_name: str
+    :param queue: Name of the App Engine task queue where this command will be enqueued
+    :type queue: str
+    :param command_params: Named parameters of App Engine command to be called
+    :type command_params: dict
+    :param http_conn_id: ID mapped to the host to which the call is sent. Can be defined in Airflow UI
+    :type http_conn_id: str
+    :param kwargs: Named parameters to pass to BaseOperator constructor
+    :type kwargs: dict
     """
     template_fields = ('command_name', 'command_params', 'job_id',)
 
@@ -153,13 +181,15 @@ class AppEngineOperatorAsync(BaseOperator):
     def __init__(self,
                  task_id,
                  command_name,
-                 command_params,
-                 http_conn_id='http_default',
+                 queue,
+                 command_params={},
+                 http_conn_id='appengine',
                  **kwargs):
         super(AppEngineOperatorAsync, self).__init__(task_id=task_id, **kwargs)
         self.http_conn_id = http_conn_id
         self.command_name = command_name
         self.command_params = command_params
+        self.queue = queue
 
     def schedule_job(self, context):
         hook = HttpHook(
@@ -169,6 +199,7 @@ class AppEngineOperatorAsync(BaseOperator):
         headers = {
             'content-type': 'application/json',
             'Accept': 'text/plain',
+            'X-Bluecore-Token': configuration.get('appengine', 'token'),
             'X-Airflow-Dag-Id': self.dag_id,
             'X-Airflow-Task-Id': self.task_id,
             'X-Airflow-Execution-Date': context['execution_date'].isoformat(),
@@ -184,10 +215,16 @@ class AppEngineOperatorAsync(BaseOperator):
         if configuration.get('mysql', 'cloudsql_instance') is not None:
             headers['X-Airflow-Mysql-Cloudsql-Instance'] = configuration.get('mysql', 'cloudsql_instance')
 
+        # generate a unique job name for the command to be added to the App Engine task queue
+        job_id = uniquify_job_name(self, context)
+        logging.info("Job ID: %s", job_id)
+
+        post_data = {'params_dict': self.command_params, 'queue': self.queue, 'job_id': job_id}
+
         hook.run(
             endpoint='/api/airflow/async/%s' % self.command_name,
             headers=headers,
-            data=json.dumps(self.command_params),
+            data=json.dumps(post_data),
             extra_options=None)
 
     def safe_xcom_pull(self, context, task_ids, dag_id=None, key=XCOM_RETURN_KEY, include_prior_dates=None):
