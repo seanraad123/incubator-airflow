@@ -41,7 +41,11 @@ class AppEngineOperator(BaseOperator):
             http_conn_id=self.http_conn_id)
         hook.run(
             endpoint='/api/airflow/schedule_job',
-            headers={'content-type': 'application/json', 'Accept': 'text/plain'},
+            headers={
+                'content-type': 'application/json',
+                'Accept': 'text/plain',
+                'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key'),
+            },
             data=json.dumps(self.command_params),
             extra_options=None)
 
@@ -123,6 +127,7 @@ class AppEngineOperatorSync(BaseOperator):
             'X-Airflow-Dag-Id': self.dag_id,
             'X-Airflow-Task-Id': self.task_id,
             'X-Airflow-Execution-Date': context['execution_date'].isoformat(),
+            'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key'),
         }
 
         if configuration.get('mysql', 'host') is not None:
@@ -207,6 +212,7 @@ class AppEngineOperatorAsync(BaseOperator):
             'X-Airflow-Mysql-Db': configuration.get('mysql', 'db'),
             'X-Airflow-Mysql-User': configuration.get('mysql', 'username'),
             'X-Airflow-Mysql-Password': configuration.get('mysql', 'password'),
+            'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key'),
         }
 
         if configuration.get('mysql', 'host') is not None:
