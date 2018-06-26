@@ -136,13 +136,11 @@ class AppEngineOperatorSync(BaseOperator):
         if configuration.get('mysql', 'cloudsql_instance') is not None:
             headers['X-Airflow-Mysql-Cloudsql-Instance'] = configuration.get('mysql', 'cloudsql_instance')
 
-        post_data = {'params_dict': self.command_params}
-
         # this will throw on any 4xx or 5xx
         with hook.run(
             endpoint='/api/airflow/sync/%s' % self.command_name,
             headers=headers,
-            data=json.dumps(post_data),
+            data=json.dumps(self.command_params),
             extra_options=None
         ) as response:
             if response.content:
