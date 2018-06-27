@@ -4,7 +4,7 @@ from airflow.exceptions import AirflowException, AirflowTaskTimeout
 from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator, XCOM_RETURN_KEY
 from airflow.utils.decorators import apply_defaults
-from airflow.utils.kubernetes_utils import uniquify_job_name
+from airflow.contrib.utils.kubernetes_utils import uniquify_job_name
 from datetime import datetime
 try:
     import ujson as json
