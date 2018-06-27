@@ -4,6 +4,7 @@ from airflow.version import version as airflow_version
 from airflow.contrib.utils.kubernetes_utils import dict_to_env, uniquify_job_name, deuniquify_job_name, \
     KubernetesSecretParameter
 from airflow.contrib.utils.parameters import enumerate_parameters
+from datetime import datetime
 import json
 import logging
 import os
@@ -230,10 +231,18 @@ class KubernetesJobOperator(BaseOperator):
                 # dependent containers will be left to the top-level `finally` block down below.
                 has_live = False
                 for pod in pod_output['items']:
-                    if pod['status']['phase'] in {'Pending', 'Unknown'}:
+                    if 'Unknown' == pod['status']['phase']:
                         # we haven't run yet
                         has_live = True
                         break
+                    elif 'Pending' == pod['status']['phase']:
+                        start_time = datetime.strptime(pod['status']['startTime'], "%Y-%m-%dT%H:%M:%SZ")
+                        start_duration_secs = (datetime.utcnow() - start_time).total_seconds()
+                        if start_duration_secs > 300:
+                            raise Exception('%s has failed to start after %0.2f seconds' % (
+                                job_name,
+                                start_duration_secs,
+                            ))
                     elif 'Running' == pod['status']['phase']:
                         # get all of the independent containers that are still alive (running or waiting)
                         live_cnt = 0
@@ -307,7 +316,6 @@ class KubernetesJobOperator(BaseOperator):
             instance_env['STATSD_HOST'] = configuration.get('scheduler', 'statsd_host')
             instance_env['STATSD_PORT'] = configuration.get('scheduler', 'statsd_port')
             instance_env['STATSD_PREFIX'] = configuration.get('scheduler', 'statsd_prefix')
-
 
         # Make a copy of all the containers.
         # Expand collections and apply XComs in args and/or command
