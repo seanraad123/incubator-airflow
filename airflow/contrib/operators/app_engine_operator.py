@@ -147,7 +147,7 @@ class AppEngineOperatorSync(BaseOperator):
 
         # this will throw on any 4xx or 5xx
         with hook.run(
-            endpoint='/api/airflow/sync/%s' % self.command_name,
+            endpoint='/api/airflow_v2/sync/%s' % self.command_name,
             headers=headers,
             data=json.dumps(self.command_params),
             extra_options=None
@@ -237,7 +237,7 @@ class AppEngineOperatorAsync(BaseOperator):
         post_data = {'params_dict': self.command_params, 'queue': self.queue, 'job_id': job_id}
 
         hook.run(
-            endpoint='/api/airflow/async/%s' % self.command_name,
+            endpoint='/api/airflow_v2/async/%s' % self.command_name,
             headers=headers,
             data=json.dumps(post_data),
             extra_options=None)
