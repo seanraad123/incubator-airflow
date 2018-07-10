@@ -44,7 +44,7 @@ class AppEngineOperator(BaseOperator):
             headers={
                 'content-type': 'application/json',
                 'Accept': 'text/plain',
-                'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key'),
+                'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key').strip(),
             },
             data=json.dumps(self.command_params),
             extra_options=None)
@@ -129,12 +129,12 @@ class AppEngineOperatorSync(BaseOperator):
         headers = {
             'content-type': 'application/json',
             'Accept': 'application/json',
-            'X-Bluecore-Token': configuration.get('appengine', 'token'),
+            'X-Bluecore-Token': configuration.get('appengine', 'token').strip(),
             # these are not necessary, but may make debugging easier later
             'X-Airflow-Dag-Id': self.dag_id,
             'X-Airflow-Task-Id': self.task_id,
             'X-Airflow-Execution-Date': context['execution_date'].isoformat(),
-            'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key'),
+            'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key').strip(),
         }
 
         mysql_host = safe_config_get('mysql', 'host')
@@ -211,15 +211,15 @@ class AppEngineOperatorAsync(BaseOperator):
         headers = {
             'content-type': 'application/json',
             'Accept': 'text/plain',
-            'X-Bluecore-Token': configuration.get('appengine', 'token'),
+            'X-Bluecore-Token': configuration.get('appengine', 'token').strip(),
             'X-Airflow-Dag-Id': self.dag_id,
             'X-Airflow-Task-Id': self.task_id,
             'X-Airflow-Execution-Date': context['execution_date'].isoformat(),
             'X-Airflow-Enable-Xcom-Pickling': str(configuration.getboolean('core', 'enable_xcom_pickling')),
-            'X-Airflow-Mysql-Db': configuration.get('mysql', 'db'),
-            'X-Airflow-Mysql-User': configuration.get('mysql', 'username'),
-            'X-Airflow-Mysql-Password': configuration.get('mysql', 'password'),
-            'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key'),
+            'X-Airflow-Mysql-Db': configuration.get('mysql', 'db').strip(),
+            'X-Airflow-Mysql-User': configuration.get('mysql', 'username').strip(),
+            'X-Airflow-Mysql-Password': configuration.get('mysql', 'password').strip(),
+            'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key').strip(),
         }
 
         mysql_host = safe_config_get('mysql', 'host')
