@@ -222,11 +222,13 @@ class AppEngineOperatorAsync(BaseOperator):
             'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key'),
         }
 
-        if configuration.get('mysql', 'host') is not None:
-            headers['X-Airflow-Mysql-Host'] = configuration.get('mysql', 'host')
+        mysql_host = safe_config_get('mysql', 'host')
+        if mysql_host is not None:
+            headers['X-Airflow-Mysql-Host'] = mysql_host
 
-        if configuration.get('mysql', 'cloudsql_instance') is not None:
-            headers['X-Airflow-Mysql-Cloudsql-Instance'] = configuration.get('mysql', 'cloudsql_instance')
+        mysql_cloudsql_instance = safe_config_get('mysql', 'cloudsql_instance')
+        if mysql_cloudsql_instance is not None:
+            headers['X-Airflow-Mysql-Cloudsql-Instance'] = mysql_cloudsql_instance
 
         # generate a unique job name for the command to be added to the App Engine task queue
         job_id = uniquify_job_name(self, context)
