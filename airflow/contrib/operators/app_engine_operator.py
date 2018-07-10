@@ -1,6 +1,6 @@
 from airflow import configuration
 from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
-from airflow.exceptions import AirflowException, AirflowTaskTimeout
+from airflow.exceptions import AirflowException, AirflowTaskTimeout, AirflowConfigException
 from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator, XCOM_RETURN_KEY
 from airflow.utils.decorators import apply_defaults
@@ -83,6 +83,13 @@ def check_gcs_file_exists(file_name, google_cloud_conn_id, bucket):
 # TODO test jinja render job id correctly
 
 
+def safe_config_get(section, key):
+    try:
+        return configuration.get('mysql', 'host')
+    except AirflowConfigException:
+        return None
+
+
 class AppEngineOperatorSync(BaseOperator):
     """
     AppEngineOperatorSync calls an API endpoint in App Engine and waits for a response. If the response has a 4xx or 5xx
@@ -130,11 +137,13 @@ class AppEngineOperatorSync(BaseOperator):
             'X-Airflow-Fernet-Key': configuration.get('core', 'fernet_key'),
         }
 
-        if configuration.get('mysql', 'host') is not None:
-            headers['X-Airflow-Mysql-Host'] = configuration.get('mysql', 'host')
+        mysql_host = safe_config_get('mysql', 'host')
+        if mysql_host is not None:
+            headers['X-Airflow-Mysql-Host'] = mysql_host
 
-        if configuration.get('mysql', 'cloudsql_instance') is not None:
-            headers['X-Airflow-Mysql-Cloudsql-Instance'] = configuration.get('mysql', 'cloudsql_instance')
+        mysql_cloudsql_instance = safe_config_get('mysql', 'cloudsql_instance')
+        if mysql_cloudsql_instance is not None:
+            headers['X-Airflow-Mysql-Cloudsql-Instance'] = mysql_cloudsql_instance
 
         # this will throw on any 4xx or 5xx
         with hook.run(
