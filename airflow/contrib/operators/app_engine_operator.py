@@ -156,7 +156,7 @@ class AppEngineOperatorSync(BaseOperator):
                 # be careful of content types with an encoding suffix
                 content_type = response.headers['Content-Type'].split(';')[0]
                 if content_type == 'application/json':
-                    body = response.json
+                    body = response.json()
                 elif content_type == 'text/plain':
                     body = response.text
                 elif content_type in {
