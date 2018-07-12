@@ -156,7 +156,7 @@ def dict_to_env(source, task_instance, context=None):
     return retval
 
 
-def uniquify_job_name(task_instance, context, run_timestamp=None):
+def uniquify_job_name(task_instance, context, run_timestamp=None, job_name=None):
     """
     uniquify_job_name generates a unique name for each job based on the
     job name appended with some magic!
@@ -166,13 +166,21 @@ def uniquify_job_name(task_instance, context, run_timestamp=None):
            member.
     :param run_timestamp: Date/time of the run. This should be None in
            non-testing scenarios
+    :param job_name: A name that we will be uniquifying. If passing a KubernetesJobOperator instance or an
+           AppEngineAsyncOperator, the job_name will be inferred.
     :return: A unique string for the task instance
     """
     if not run_timestamp:
         run_timestamp = datetime.utcnow()
 
+    if job_name is None:
+        if hasattr(task_instance, 'job_name'):
+            job_name = task_instance.job_name
+        elif hasattr(task_instance, 'command_name'):
+            job_name = task_instance.command_name.split('.')[-1]
+
     return "-".join([
-        task_instance.job_name,
+        job_name,
         hashlib.sha512(" ".join([
             context['execution_date'].isoformat(),
             task_instance.dag_id,
