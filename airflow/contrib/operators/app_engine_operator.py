@@ -85,7 +85,7 @@ def check_gcs_file_exists(file_name, google_cloud_conn_id, bucket):
 
 def safe_config_get(section, key):
     try:
-        return configuration.get('mysql', 'host')
+        return configuration.get(section, key)
     except AirflowConfigException:
         return None
 
