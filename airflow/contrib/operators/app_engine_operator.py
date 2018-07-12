@@ -178,8 +178,8 @@ class AppEngineOperatorAsync(BaseOperator):
     :type task_id: str
     :param command_name: Full name of the App Engine command to be called (e.g. engine.core.commands.ExCommand)
     :type command_name: str
-    :param queue: Name of the App Engine task queue where this command will be enqueued
-    :type queue: str
+    :param appengine_queue: Name of the App Engine task queue where this command will be enqueued
+    :type appengine_queue: str
     :param command_params: Named parameters of App Engine command to be called
     :type command_params: dict
     :param http_conn_id: ID mapped to the host to which the call is sent. Can be defined in Airflow UI
@@ -193,7 +193,7 @@ class AppEngineOperatorAsync(BaseOperator):
     def __init__(self,
                  task_id,
                  command_name,
-                 queue,
+                 appengine_queue,
                  command_params={},
                  http_conn_id='appengine',
                  **kwargs):
@@ -201,7 +201,7 @@ class AppEngineOperatorAsync(BaseOperator):
         self.http_conn_id = http_conn_id
         self.command_name = command_name
         self.command_params = command_params
-        self.queue = queue
+        self.appengine_queue = appengine_queue
 
     def schedule_job(self, context):
         hook = HttpHook(
@@ -234,7 +234,7 @@ class AppEngineOperatorAsync(BaseOperator):
         job_id = uniquify_job_name(self, context)
         logging.info("Job ID: %s", job_id)
 
-        post_data = {'params_dict': self.command_params, 'queue': self.queue, 'job_id': job_id}
+        post_data = {'params_dict': self.command_params, 'appengine_queue': self.appengine_queue, 'job_id': job_id}
 
         hook.run(
             endpoint='/api/airflow_v2/async/%s' % self.command_name,
