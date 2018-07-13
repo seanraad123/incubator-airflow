@@ -1,5 +1,6 @@
 from airflow import configuration
 from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
+from airflow.contrib.utils.parameters import evaluate_xcoms
 from airflow.exceptions import AirflowException, AirflowTaskTimeout, AirflowConfigException
 from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator, XCOM_RETURN_KEY
@@ -145,11 +146,13 @@ class AppEngineOperatorSync(BaseOperator):
         if mysql_cloudsql_instance is not None:
             headers['X-Airflow-Mysql-Cloudsql-Instance'] = mysql_cloudsql_instance
 
+        instance_params = evaluate_xcoms(self.command_params, self, context)
+
         # this will throw on any 4xx or 5xx
         with hook.run(
             endpoint='/api/airflow_v2/sync/%s' % self.command_name,
             headers=headers,
-            data=json.dumps(self.command_params),
+            data=json.dumps(instance_params),
             extra_options=None
         ) as response:
             if response.content:
@@ -234,7 +237,9 @@ class AppEngineOperatorAsync(BaseOperator):
         job_id = uniquify_job_name(self, context)
         logging.info("Job ID: %s", job_id)
 
-        post_data = {'params_dict': self.command_params, 'appengine_queue': self.appengine_queue, 'job_id': job_id}
+        instance_params = evaluate_xcoms(self.command_params, self, context)
+
+        post_data = {'params_dict': instance_params, 'appengine_queue': self.appengine_queue, 'job_id': job_id}
 
         hook.run(
             endpoint='/api/airflow_v2/async/%s' % self.command_name,
