@@ -134,9 +134,9 @@ def evaluate_xcoms(source, task_instance, context=None):
     elif hasattr(source, "iterkeys"):
         retval = {}
         for k, v in source.iteritems():
-            retval[k] = evaluate_xcoms(v)
+            retval[k] = evaluate_xcoms(v, task_instance, context)
         return retval
     elif hasattr(source, "__iter__"):
-        return [evaluate_xcoms(x) for x in source]
+        return [evaluate_xcoms(x, task_instance, context) for x in source]
     else:
         return source
