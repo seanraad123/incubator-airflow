@@ -9,62 +9,57 @@ import json
 import functools
 
 
-def TryXCom(XCom):
-    """XCom object with function that indicates whether XCom was found in database"""
+@provide_session
+def try_get_one(
+            execution_date,
+            key=None,
+            task_id=None,
+            dag_id=None,
+            include_prior_dates=False,
+            enable_pickling=None,
+            session=None):
+    """
+    Retrieve an XCom value, optionally meeting certain criteria.
+    TODO: "pickling" has been deprecated and JSON is preferred. "pickling" will be removed in Airflow 2.0.
 
-    @classmethod
-    @provide_session
-    def get_one(
-                cls,
-                execution_date,
-                key=None,
-                task_id=None,
-                dag_id=None,
-                include_prior_dates=False,
-                enable_pickling=None,
-                session=None):
-        """
-        Retrieve an XCom value, optionally meeting certain criteria.
-        TODO: "pickling" has been deprecated and JSON is preferred. "pickling" will be removed in Airflow 2.0.
+    :param enable_pickling: If pickling is not enabled, the XCOM value will be parsed to JSON instead.
+    :return: XCom value
+    """
+    filters = []
+    if key:
+        filters.append(XCom.key == key)
+    if task_id:
+        filters.append(XCom.task_id == task_id)
+    if dag_id:
+        filters.append(XCom.dag_id == dag_id)
+    if include_prior_dates:
+        filters.append(XCom.execution_date <= execution_date)
+    else:
+        filters.append(XCom.execution_date == execution_date)
 
-        :param enable_pickling: If pickling is not enabled, the XCOM value will be parsed to JSON instead.
-        :return: XCom value
-        """
-        filters = []
-        if key:
-            filters.append(cls.key == key)
-        if task_id:
-            filters.append(cls.task_id == task_id)
-        if dag_id:
-            filters.append(cls.dag_id == dag_id)
-        if include_prior_dates:
-            filters.append(cls.execution_date <= execution_date)
+    query = (
+        session.query(XCom.value)
+        .filter(and_(*filters))
+        .order_by(XCom.execution_date.desc(), XCom.timestamp.desc()))
+
+    result = query.first()
+    if result:
+        if enable_pickling is None:
+            enable_pickling = configuration.getboolean('core', 'enable_xcom_pickling')
+
+        if enable_pickling:
+            return (True, pickle.loads(result.value))
         else:
-            filters.append(cls.execution_date == execution_date)
-
-        query = (
-            session.query(cls.value)
-            .filter(and_(*filters))
-            .order_by(cls.execution_date.desc(), cls.timestamp.desc()))
-
-        result = query.first()
-        if result:
-            if enable_pickling is None:
-                enable_pickling = configuration.getboolean('core', 'enable_xcom_pickling')
-
-            if enable_pickling:
-                return (True, pickle.loads(result.value))
-            else:
-                try:
-                    return (True, json.loads(result.value.decode('UTF-8')))
-                except ValueError:
-                    log = LoggingMixin().log
-                    log.error("Could not serialize the XCOM value into JSON. "
-                              "If you are using pickles instead of JSON "
-                              "for XCOM, then you need to enable pickle "
-                              "support for XCOM in your airflow config.")
-                    raise
-        return (False, None)
+            try:
+                return (True, json.loads(result.value.decode('UTF-8')))
+            except ValueError:
+                log = LoggingMixin().log
+                log.error("Could not serialize the XCOM value into JSON. "
+                          "If you are using pickles instead of JSON "
+                          "for XCOM, then you need to enable pickle "
+                          "support for XCOM in your airflow config.")
+                raise
+    return (False, None)
 
 
 def try_xcom_pull(
@@ -107,7 +102,7 @@ def try_xcom_pull(
         dag_id = context['ti'].dag_id
 
     pull_fn = functools.partial(
-        TryXCom.get_one,
+        try_get_one,
         execution_date=context['ti'].execution_date,
         key=key,
         dag_id=dag_id,
