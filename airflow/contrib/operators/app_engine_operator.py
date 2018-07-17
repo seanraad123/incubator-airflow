@@ -6,6 +6,7 @@ from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator, XCOM_RETURN_KEY
 from airflow.utils.decorators import apply_defaults
 from airflow.contrib.utils.kubernetes_utils import uniquify_job_name
+from airflow.contrib.utils.xcom import try_xcom_pull
 from datetime import datetime
 try:
     import ujson as json
@@ -272,7 +273,16 @@ class AppEngineOperatorAsync(BaseOperator):
         i = 0
         # Bluecore App Engine backend instances timeout after an hour
         while (datetime.utcnow() - start_time).total_seconds() < 3600:
-            retval = self.xcom_pull(context=context, task_ids=self.task_id)
+            # try_xcom_pull allows us to distinguish between cases where the task
+            # hasn't pushed an XCom and where the task pushed an XCom with value None.
+            retval_tuple = try_xcom_pull(context=context, task_ids=self.task_id)
+            # if XCom not yet pushed
+            if not retval_tuple[0]:
+                # sleep for a while and try again
+                time.sleep(min(60, 2**i))
+                i += 1
+                continue
+            retval = retval_tuple[1]
             if retval == '__EXCEPTION__':
                 exc_message = self.safe_xcom_pull(
                     context=context,
@@ -301,12 +311,7 @@ class AppEngineOperatorAsync(BaseOperator):
                     logging.error(str(exc_callstack))
 
                 raise AirflowException(exc_message)
-            elif retval is not None:
-                return
-
-            # sleep for a while and try again
-            time.sleep(min(60, 2**i))
-            i += 1
+            return
 
         raise AirflowTaskTimeout()
 
