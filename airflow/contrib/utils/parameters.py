@@ -44,6 +44,29 @@ class XComParameter(object):
             return [ti.xcom_pull(**params)]
 
 
+    def get_value(self, ti, context=None):
+        """
+        Gets a list of parameter values if a list of task_ids was provided, otherwise a bare value
+
+        :param ti: A TaskInstance or other object implementing xcom_pull
+        :param context: Optional context to pass when when giving an operator
+                        instead of a task instance
+        :return: A container (list or tuple) with each returned value in the
+                 same order as the task_ids provided in the constructor, if a list were provided.
+                 If a single task_id was given, a single value will be returned. If a task_id has
+                 no value, it will be None.
+        """
+        params = dict(task_ids=self.task_ids, key=self.key)
+        if isinstance(ti, BaseOperator):
+            if context is None:
+                raise ValueError("context is required when using BaseOperator instead of TaskInstance")
+            params['context'] = context
+        if hasattr(self.task_ids, '__iter__') and not isinstance(self.task_ids, basestring):
+            return ti.xcom_pull(**params)
+        else:
+            return ti.xcom_pull(**params)
+
+
 def enumerate_parameter_dict(source_dict, task_instance, context=None):
     for key, value in source_dict.iteritems():
         if isinstance(value, dict):
@@ -109,3 +132,34 @@ def enumerate_parameters(source, task_instance, context=None):
                 source.__class__.__name__,
                 source,
             ))
+
+
+def evaluate_xcoms(source, task_instance, context=None):
+    """
+    Takes in an object (or container) and returns the same thing but with XComParameters evaluated
+
+    :param source: The object (or container) that (may) have XComParameters
+    :param task_instance: The task instance whose asking
+    :param context: Optional context to pass when when giving an operator
+                    instead of a task instance
+    :return: A data structure that looks (mostly) like `source`, but with XComParameters evaluated
+    """
+    if source is None:
+        return
+
+    if task_instance and not hasattr(task_instance, 'xcom_pull'):
+        raise ValueError("Provided task_instance object does have the xcom_pull method")
+
+    if isinstance(source, (basestring, bool, int, long, float)):
+        return source
+    elif isinstance(source, XComParameter):
+        return source.get_value(task_instance, context)
+    elif hasattr(source, "iterkeys"):
+        retval = {}
+        for k, v in source.iteritems():
+            retval[k] = evaluate_xcoms(v, task_instance, context)
+        return retval
+    elif hasattr(source, "__iter__"):
+        return [evaluate_xcoms(x, task_instance, context) for x in source]
+    else:
+        return source

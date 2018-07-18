@@ -1,10 +1,12 @@
 from airflow import configuration
 from airflow.contrib.hooks.gcs_hook import GoogleCloudStorageHook
+from airflow.contrib.utils.parameters import evaluate_xcoms
 from airflow.exceptions import AirflowException, AirflowTaskTimeout, AirflowConfigException
 from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator, XCOM_RETURN_KEY
 from airflow.utils.decorators import apply_defaults
 from airflow.contrib.utils.kubernetes_utils import uniquify_job_name
+from airflow.contrib.utils.xcom import try_xcom_pull
 from datetime import datetime
 try:
     import ujson as json
@@ -145,11 +147,13 @@ class AppEngineOperatorSync(BaseOperator):
         if mysql_cloudsql_instance is not None:
             headers['X-Airflow-Mysql-Cloudsql-Instance'] = mysql_cloudsql_instance
 
+        instance_params = evaluate_xcoms(self.command_params, self, context)
+
         # this will throw on any 4xx or 5xx
         with hook.run(
             endpoint='/api/airflow_v2/sync/%s' % self.command_name,
             headers=headers,
-            data=json.dumps(self.command_params),
+            data=json.dumps(instance_params),
             extra_options=None
         ) as response:
             if response.content:
@@ -234,7 +238,9 @@ class AppEngineOperatorAsync(BaseOperator):
         job_id = uniquify_job_name(self, context)
         logging.info("Job ID: %s", job_id)
 
-        post_data = {'params_dict': self.command_params, 'appengine_queue': self.appengine_queue, 'job_id': job_id}
+        instance_params = evaluate_xcoms(self.command_params, self, context)
+
+        post_data = {'params_dict': instance_params, 'appengine_queue': self.appengine_queue, 'job_id': job_id}
 
         hook.run(
             endpoint='/api/airflow_v2/async/%s' % self.command_name,
@@ -267,7 +273,16 @@ class AppEngineOperatorAsync(BaseOperator):
         i = 0
         # Bluecore App Engine backend instances timeout after an hour
         while (datetime.utcnow() - start_time).total_seconds() < 3600:
-            retval = self.xcom_pull(context=context, task_ids=self.task_id)
+            # try_xcom_pull allows us to distinguish between cases where the task
+            # hasn't pushed an XCom and where the task pushed an XCom with value None.
+            retval_tuple = try_xcom_pull(context=context, task_ids=self.task_id)
+            # if XCom not yet pushed
+            if not retval_tuple[0]:
+                # sleep for a while and try again
+                time.sleep(min(60, 2**i))
+                i += 1
+                continue
+            retval = retval_tuple[1]
             if retval == '__EXCEPTION__':
                 exc_message = self.safe_xcom_pull(
                     context=context,
@@ -296,12 +311,7 @@ class AppEngineOperatorAsync(BaseOperator):
                     logging.error(str(exc_callstack))
 
                 raise AirflowException(exc_message)
-            elif retval is not None:
-                return
-
-            # sleep for a while and try again
-            time.sleep(min(60, 2**i))
-            i += 1
+            return
 
         raise AirflowTaskTimeout()
 
