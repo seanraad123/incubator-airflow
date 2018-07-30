@@ -328,4 +328,5 @@ class AppEngineOperatorAsync(BaseOperator):
         # and an operator fails if and only if it raises an AirflowException.
         # Good luck finding documentation saying that though.
         self.schedule_job(context)
+        logging.info("Job scheduled")
         self.poll_status(context)
