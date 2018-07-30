@@ -275,6 +275,7 @@ class AppEngineOperatorAsync(BaseOperator):
         # Bluecore App Engine backend instances timeout after an hour
         while True:
             remaining_secs = 3600 - (datetime.utcnow() - start_time).total_seconds()
+            logging.info("%0.2f seconds remain until timeout" % remaining_secs)
             if remaining_secs <= 0:
                 raise AirflowTaskTimeout()
 
@@ -284,10 +285,10 @@ class AppEngineOperatorAsync(BaseOperator):
             # if XCom not yet pushed
 
             if not retval_tuple[0]:
+                logging.info("XCom response not found. Sleeping.")
                 # sleep for a while and try again
                 time.sleep(min(60, 2**i))
                 i += 1
-                logging.info("XCom response not found. Sleeping. %0.2f seconds remain until timeout" % remaining_secs)
                 continue
             retval = retval_tuple[1]
             logging.info("XCom response received: %s" % str(retval))
