@@ -41,7 +41,8 @@ def create_session():
         yield session
         session.expunge_all()
         session.commit()
-    except:
+    except Exception as ex:
+        log.exception("Exception in create_session context manager: %s" % str(ex), exception=ex)
         session.rollback()
         raise
     finally:
