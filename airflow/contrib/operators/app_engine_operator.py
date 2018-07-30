@@ -328,4 +328,10 @@ class AppEngineOperatorAsync(BaseOperator):
         # Good luck finding documentation saying that though.
         self.schedule_job(context)
         logging.info("Job scheduled")
-        self.poll_status(context)
+        try:
+            self.poll_status(context)
+        except:
+            logging.error('something horrible has happenend')
+            raise
+        finally:
+            logging.info("Completed execute")
