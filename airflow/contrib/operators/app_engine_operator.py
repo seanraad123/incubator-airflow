@@ -271,26 +271,26 @@ class AppEngineOperatorAsync(BaseOperator):
     def poll_status(self, context):
         start_time = datetime.utcnow()
         i = 0
-        logging.info(
-            "Starting poll. %0.2f seconds remain until timeout" % (datetime.utcnow() - start_time).total_seconds()
-        )
 
         # Bluecore App Engine backend instances timeout after an hour
-        while (datetime.utcnow() - start_time).total_seconds() < 3600:
+        while True:
+            remaining_secs = 3600 - (datetime.utcnow() - start_time).total_seconds()
+            if remaining_secs <= 0:
+                raise AirflowTaskTimeout()
+
             # try_xcom_pull allows us to distinguish between cases where the task
             # hasn't pushed an XCom and where the task pushed an XCom with value None.
             retval_tuple = try_xcom_pull(context=context, task_ids=self.task_id)
             # if XCom not yet pushed
+
             if not retval_tuple[0]:
                 # sleep for a while and try again
                 time.sleep(min(60, 2**i))
                 i += 1
-                logging.info(
-                    "XCom response not found. Sleeping. %0.2f seconds remain until timeout" %
-                    (datetime.utcnow() - start_time).total_seconds()
-                )
+                logging.info("XCom response not found. Sleeping. %0.2f seconds remain until timeout" % remaining_secs)
                 continue
             retval = retval_tuple[1]
+            logging.info("XCom response received: %s" % str(retval))
             if retval == '__EXCEPTION__':
                 exc_message = self.safe_xcom_pull(
                     context=context,
@@ -320,8 +320,6 @@ class AppEngineOperatorAsync(BaseOperator):
 
                 raise AirflowException(exc_message)
             return
-
-        raise AirflowTaskTimeout()
 
     def execute(self, context):
         # It seems that when an operator returns, it is considered successful,
