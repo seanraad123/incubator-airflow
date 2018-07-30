@@ -1567,7 +1567,6 @@ class TaskInstance(Base, LoggingMixin):
 
     @provide_session
     def handle_failure(self, error, test_mode=False, context=None, session=None):
-        self.log.error('WE SHIT THE BED')
         self.log.exception(error)
         task = self.task
         self.end_date = datetime.utcnow()
