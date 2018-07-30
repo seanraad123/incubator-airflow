@@ -42,7 +42,6 @@ def create_session():
         session.expunge_all()
         session.commit()
     except Exception as ex:
-        log.exception("Exception in create_session context manager: %s" % str(ex))
         session.rollback()
         raise
     finally:
