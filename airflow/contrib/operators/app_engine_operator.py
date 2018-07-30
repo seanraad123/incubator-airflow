@@ -271,6 +271,10 @@ class AppEngineOperatorAsync(BaseOperator):
     def poll_status(self, context):
         start_time = datetime.utcnow()
         i = 0
+        logging.info(
+            "Starting poll. %0.2f seconds remain until timeout" % (datetime.utcnow() - start_time).total_seconds()
+        )
+
         # Bluecore App Engine backend instances timeout after an hour
         while (datetime.utcnow() - start_time).total_seconds() < 3600:
             # try_xcom_pull allows us to distinguish between cases where the task
@@ -281,6 +285,10 @@ class AppEngineOperatorAsync(BaseOperator):
                 # sleep for a while and try again
                 time.sleep(min(60, 2**i))
                 i += 1
+                logging.info(
+                    "XCom response not found. Sleeping. %0.2f seconds remain until timeout" %
+                    (datetime.utcnow() - start_time).total_seconds()
+                )
                 continue
             retval = retval_tuple[1]
             if retval == '__EXCEPTION__':
