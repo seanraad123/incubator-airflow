@@ -391,18 +391,11 @@ def run(args, dag=None):
                 pool=args.pool)
             run_job.run()
         elif args.raw:
-            try:
-                log.info("run raw starting")
-                ti._run_raw_task(
-                    mark_success=args.mark_success,
-                    job_id=args.job_id,
-                    pool=args.pool,
-                )
-            except Exception as ex:
-                log.error("raw failed with %s" % str(ex))
-                raise
-            finally:
-                log.info("run raw complete")
+            ti._run_raw_task(
+                mark_success=args.mark_success,
+                job_id=args.job_id,
+                pool=args.pool,
+            )
         else:
             pickle_id = None
             if args.ship_dag:
