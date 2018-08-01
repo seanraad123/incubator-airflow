@@ -71,7 +71,8 @@ def enumerate_parameter_dict(source_dict, task_instance, context=None):
     for key, value in source_dict.iteritems():
         if isinstance(value, dict):
             for inner_key, inner_value in value.iteritems():
-                yield (key, '{}={}'.format(inner_key, inner_value))
+                for iiv in enumerate_parameters(inner_value, task_instance=task_instance, context=context):
+                    yield (key, '{}={}'.format(inner_key, iiv))
         elif hasattr(value, '__iter__') and not isinstance(value, basestring):
             for v in value:
                 yield(key, v)
