@@ -236,7 +236,12 @@ class KubernetesJobOperator(BaseOperator):
                         has_live = True
                         break
                     elif 'Pending' == pod['status']['phase']:
-                        start_time = datetime.strptime(pod['status']['startTime'], "%Y-%m-%dT%H:%M:%SZ")
+                        has_live = True
+                        start_time_s = pod['status'].get('startTime')
+                        if not start_time_s:
+                            logging.info('Pod not yet started')
+                            break
+                        start_time = datetime.strptime(start_time_s, "%Y-%m-%dT%H:%M:%SZ")
                         start_duration_secs = (datetime.utcnow() - start_time).total_seconds()
                         if start_duration_secs > 300:
                             raise Exception('%s has failed to start after %0.2f seconds' % (
@@ -277,6 +282,7 @@ class KubernetesJobOperator(BaseOperator):
                             if 'running' in cs['state']
                         ]
                         for cname in live_containers:
+                            logging.info('killing dependent live container %s' % cname)
                             # there is a race condition between reading the status and trying to kill the running
                             # container. ignore the return code to duck the issue.
                             subprocess.call(['kubectl', 'exec', pod['metadata']['name'], '-c', cname, 'kill', '1'])

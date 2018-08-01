@@ -336,8 +336,3 @@ class AppEngineOperatorAsync(BaseOperator):
         finally:
             logging.info("Completed execute")
 
-    def on_kill(self):
-        logging.warning('Task killed')
-
-    def post_execute(self, context, result=None):
-        logging.warning('Task post execute')
