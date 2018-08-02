@@ -1,7 +1,10 @@
 from __future__ import absolute_import
 
 from airflow.models import BaseOperator
-import json
+try:
+    import ujson as json
+except ImportError:
+    import json
 
 
 class XComParameter(object):
