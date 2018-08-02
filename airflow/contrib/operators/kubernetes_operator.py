@@ -16,7 +16,7 @@ import yaml
 
 
 class KubernetesJobOperator(BaseOperator):
-    template_fields = ('service_account_secret_name', 'env')
+    template_fields = ('service_account_secret_name',)
 
     def __init__(self,
                  job_name,
