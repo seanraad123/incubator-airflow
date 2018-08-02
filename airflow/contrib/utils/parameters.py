@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from airflow.models import BaseOperator
+import json
 
 
 class XComParameter(object):
@@ -43,7 +44,6 @@ class XComParameter(object):
         else:
             return [ti.xcom_pull(**params)]
 
-
     def get_value(self, ti, context=None):
         """
         Gets a list of parameter values if a list of task_ids was provided, otherwise a bare value
@@ -65,6 +65,24 @@ class XComParameter(object):
             return ti.xcom_pull(**params)
         else:
             return ti.xcom_pull(**params)
+
+
+class SerialParameter(object):
+    """
+    A parameter value that will evaluate all nested XComParameters and then serialize the source
+    (for now only supports json).
+
+    This means that the image expecting to receive this command line argument should then
+    deserialize.
+    """
+    def __init__(self, parameter_object):
+        """
+        Makes a new SerialParameter
+
+        :param parameter_object: an object to be serialized after any nested XComParameter values
+        are evaluated
+        """
+        self.parameter_object = parameter_object
 
 
 def enumerate_parameter_dict(source_dict, task_instance, context=None):
@@ -90,7 +108,7 @@ def enumerate_parameters(source, task_instance, context=None):
 
     If you are passing in keyed elements with keys of non-string types, you're a jerk.
 
-    :param source: A thing, singular or iterable or XCom
+    :param source: A thing, singular or iterable, XCom, or SerialParameter
     :param task_instance: A thing that can decode XComs
     :param context: Optional context to pass when when giving an operator
                     instead of a task instance
@@ -108,6 +126,8 @@ def enumerate_parameters(source, task_instance, context=None):
         for v in source.get_values(task_instance, context=context):
             if v is not None:
                 yield v
+    elif isinstance(source, SerialParameter):
+        yield json.dumps(evaluate_xcoms(source.parameter_object, task_instance, context))
     elif hasattr(source, "iterkeys"):
         for k, v in enumerate_parameter_dict(source, task_instance, context=context):
             if v is not None:
