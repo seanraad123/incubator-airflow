@@ -67,7 +67,7 @@ class XComParameter(object):
             return ti.xcom_pull(**params)
 
 
-class SerialParameter(object):
+class SerializeMe(object):
     """
     A parameter value that will evaluate all nested XComParameters and then serialize the source
     (for now only supports json).
@@ -77,7 +77,7 @@ class SerialParameter(object):
     """
     def __init__(self, parameter_object):
         """
-        Makes a new SerialParameter
+        Makes a new SerializeMe object
 
         :param parameter_object: an object to be serialized after any nested XComParameter values
         are evaluated
@@ -108,7 +108,7 @@ def enumerate_parameters(source, task_instance, context=None):
 
     If you are passing in keyed elements with keys of non-string types, you're a jerk.
 
-    :param source: A thing, singular or iterable, XCom, or SerialParameter
+    :param source: A thing, singular or iterable, XCom, or SerializeMe
     :param task_instance: A thing that can decode XComs
     :param context: Optional context to pass when when giving an operator
                     instead of a task instance
@@ -126,7 +126,7 @@ def enumerate_parameters(source, task_instance, context=None):
         for v in source.get_values(task_instance, context=context):
             if v is not None:
                 yield v
-    elif isinstance(source, SerialParameter):
+    elif isinstance(source, SerializeMe):
         yield json.dumps(evaluate_xcoms(source.parameter_object, task_instance, context))
     elif hasattr(source, "iterkeys"):
         for k, v in enumerate_parameter_dict(source, task_instance, context=context):
