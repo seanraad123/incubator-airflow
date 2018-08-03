@@ -206,6 +206,9 @@ def deuniquify_job_name(unique_job_name):
 # you specify `port_key=MY_DB_PORT` here, in your operator you should connect using
 # `MySQLdb.connect(..., port=os.environ['MY_DB_PORT'])`
 #
+# For the connection to work, the service account used by the Cloud SQL Proxy (airflow-cloudsql-instance-credentials)
+# must have access to talk to the target database.
+#
 # :param fully_qualified_instance: project:region:name to connect to
 # :param port_key: name of environment variable where the connection port should be found
 CloudSQLConnection = namedtuple('CloudSQLConnection', ['fully_qualified_instance', 'port_key'])
