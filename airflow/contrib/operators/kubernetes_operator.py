@@ -54,6 +54,8 @@ class KubernetesJobOperator(BaseOperator):
         :param sleep_seconds_between_polling: number of seconds to sleep between polling
             for job completion, defaults to 60
         :type sleep_seconds_between_polling: int
+        :param cloudsql_connections: A list of CloudSQLConnection to tell cloudsql_proxy to open additional connections
+        :type cloudsql_connections: list[CloudSQLConnection]
         :param do_xcom_push: return the stdout which also get set in xcom by airflow platform
         :type do_xcom_push: bool
         """
