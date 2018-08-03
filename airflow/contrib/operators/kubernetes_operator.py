@@ -25,6 +25,7 @@ class KubernetesJobOperator(BaseOperator):
                  volumes=None,
                  service_account_secret_name=None,
                  sleep_seconds_between_polling=15,
+                 cloudsql_connections=None,
                  do_xcom_push=False,  # TODO: [2018-05-09 dangermike] remove this once next_best is no longer using it
                  *args,
                  **kwargs):
@@ -53,6 +54,8 @@ class KubernetesJobOperator(BaseOperator):
         :param sleep_seconds_between_polling: number of seconds to sleep between polling
             for job completion, defaults to 60
         :type sleep_seconds_between_polling: int
+        :param cloudsql_connections: A list of CloudSQLConnection to tell cloudsql_proxy to open additional connections
+        :type cloudsql_connections: list[CloudSQLConnection]
         :param do_xcom_push: return the stdout which also get set in xcom by airflow platform
         :type do_xcom_push: bool
         """
@@ -95,6 +98,8 @@ class KubernetesJobOperator(BaseOperator):
         # TODO: dangermike (2018-05-22) get this from... somewhere else
         self.cloudsql_instance_creds = 'airflow-cloudsql-instance-credentials'
         self.cloudsql_db_creds = 'airflow-cloudsql-db-credentials'
+
+        self.cloudsql_connections = (cloudsql_connections or [])
 
         self.volumes = volumes or []
 
@@ -323,6 +328,14 @@ class KubernetesJobOperator(BaseOperator):
             instance_env['STATSD_PORT'] = configuration.get('scheduler', 'statsd_port')
             instance_env['STATSD_PREFIX'] = configuration.get('scheduler', 'statsd_prefix')
 
+        cs_conns = [(configuration.get('mysql', 'cloudsql_instance'), 3306)]
+        cs_next_port = 3307
+
+        for cs_conn in self.cloudsql_connections:
+            cs_conns.append((cs_conn.fully_qualified_instance, cs_next_port))
+            instance_env[cs_conn.port_key] = cs_next_port
+            cs_next_port += 1
+
         # Make a copy of all the containers.
         # Expand collections and apply XComs in args and/or command
         # Apply the instance environment variables
@@ -357,7 +370,7 @@ class KubernetesJobOperator(BaseOperator):
             'name': 'cloudsql-proxy',
             'command': [
                 '/cloud_sql_proxy',
-                '-instances=%s=tcp:3306' % configuration.get('mysql', 'cloudsql_instance'),
+                '-instances=' + ','.join(['%s=tcp:%d' % x for x in cs_conns]),
                 '-credential_file=/secrets/airflowcloudsql/credentials.json'],
             'env': [
                 {'name': 'AIRFLOW_CONTAINER_LIFECYCLE', 'value': 'dependent'}

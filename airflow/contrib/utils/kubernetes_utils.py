@@ -3,6 +3,7 @@ import jinja2
 
 from airflow.contrib.utils.parameters import enumerate_parameters
 from airflow.utils.helpers import is_container
+from collections import namedtuple
 from datetime import datetime
 import hashlib
 import re
@@ -197,3 +198,17 @@ def deuniquify_job_name(unique_job_name):
     :return: Name without unique garbage
     """
     return re.sub('^(.+)-[0-9a-f]{16}-[0-9a-f]{12,16}$', '\\1', unique_job_name)
+
+
+# Information for additional CloudSQL connections to open in the proxy. The KubernetesJobOperator will assign
+# a TCP port for each connection, putting the value of that selection into the environment variable specified
+# by port_key. Consumers are expected to read that environment variable when making their connection. E.g. if
+# you specify `port_key=MY_DB_PORT` here, in your operator you should connect using
+# `MySQLdb.connect(..., port=os.environ['MY_DB_PORT'])`
+#
+# For the connection to work, the service account used by the Cloud SQL Proxy (airflow-cloudsql-instance-credentials)
+# must have access to talk to the target database.
+#
+# :param fully_qualified_instance: project:region:name to connect to
+# :param port_key: name of environment variable where the connection port should be found
+CloudSQLConnection = namedtuple('CloudSQLConnection', ['fully_qualified_instance', 'port_key'])
