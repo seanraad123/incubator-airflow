@@ -180,7 +180,11 @@ class BaseJob(Base, LoggingMixin):
             self.log.debug('[heartbeat]')
 
     def run(self):
-        Stats.incr(self.__class__.__name__.lower() + '_start', 1, 1)
+        tags = {
+            'hostname': self.hostname,
+            'executor': self.executor_class,
+        }
+        Stats.incr(self.__class__.__name__.lower() + '_start', 1, 1, tags=tags)
         # Adding an entry in the DB
         with create_session() as session:
             self.state = State.RUNNING
@@ -199,7 +203,7 @@ class BaseJob(Base, LoggingMixin):
             session.merge(self)
             session.commit()
 
-        Stats.incr(self.__class__.__name__.lower() + '_end', 1, 1)
+        Stats.incr(self.__class__.__name__.lower() + '_end', 1, 1, tags=tags)
 
     def _execute(self):
         raise NotImplementedError("This method needs to be overridden")
@@ -2520,7 +2524,13 @@ class LocalTaskJob(BaseJob):
                     self.heartbeat()
                     last_heartbeat_time = time.time()
                 except OperationalError:
-                    Stats.incr('local_task_job_heartbeat_failure', 1, 1)
+                    Stats.incr(
+                        'local_task_job_heartbeat_failure',
+                        tags={
+                            'task_id': self.task_instance.task_id,
+                            'dag_id': self.task_instance.dag_id,
+                        },
+                    )
                     self.log.exception(
                         "Exception while trying to heartbeat! Sleeping for %s seconds",
                         self.heartrate
@@ -2531,7 +2541,13 @@ class LocalTaskJob(BaseJob):
                 # the scheduler rescheduled this task, so kill launched processes.
                 time_since_last_heartbeat = time.time() - last_heartbeat_time
                 if time_since_last_heartbeat > heartbeat_time_limit:
-                    Stats.incr('local_task_job_prolonged_heartbeat_failure', 1, 1)
+                    Stats.incr(
+                        'local_task_job_prolonged_heartbeat_failure',
+                        tags={
+                            'task_id': self.task_instance.task_id,
+                            'dag_id': self.task_instance.dag_id,
+                        }
+                    )
                     self.log.error("Heartbeat time limited exceeded!")
                     raise AirflowException("Time since last heartbeat({:.2f}s) "
                                            "exceeded limit ({}s)."
