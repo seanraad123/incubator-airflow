@@ -32,19 +32,31 @@ log = logging.getLogger(__name__)
 
 class DummyStatsLogger(object):
     @classmethod
-    def incr(cls, stat, count=1, rate=1):
+    def timer(self, stat, rate=1, tags=None):
         pass
 
     @classmethod
-    def decr(cls, stat, count=1, rate=1):
+    def timing(self, stat, delta, rate=1, tags=None):
         pass
 
     @classmethod
-    def gauge(cls, stat, value, rate=1, delta=False):
+    def incr(cls, stat, count=1, rate=1, tags=None):
         pass
 
     @classmethod
-    def timing(cls, stat, dt):
+    def decr(cls, stat, count=1, rate=1, tags=None):
+        pass
+
+    @classmethod
+    def gauge(cls, stat, value, rate=1, delta=False, tags=None):
+        pass
+
+    @classmethod
+    def set(self, stat, value, rate=1, tags=None):
+        pass
+
+    @classmethod
+    def histogram(self, stat, value, rate=1, tags=None):
         pass
 
 
@@ -59,7 +71,7 @@ if conf.getboolean('scheduler', 'statsd_on'):
         cls_name = conf.get('scheduler', 'statsd_class')
         if cls_name == 'datadog.dogstatsd.DogStatsd':
             from airflow.contrib.utils.dogstatsd_adapter import DogStatsdAdapter
-            statsd = DogStatsdAdapter(
+            Stats = DogStatsdAdapter(
                 host=conf.get('scheduler', 'statsd_host'),
                 port=conf.getint('scheduler', 'statsd_port'),
                 prefix=conf.get('scheduler', 'statsd_prefix'))
@@ -69,19 +81,21 @@ if conf.getboolean('scheduler', 'statsd_on'):
             for comp in components[1:]:
                 statsd_cls = getattr(statsd_cls, comp)
 
-            statsd = statsd_cls(
+            Stats = statsd_cls(
                 host=conf.get('scheduler', 'statsd_host'),
                 port=conf.getint('scheduler', 'statsd_port'),
                 prefix=conf.get('scheduler', 'statsd_prefix'))
     except AirflowConfigException:
         from statsd import StatsClient
-        statsd = StatsClient(
-            host=conf.get('scheduler', 'statsd_host'),
-            port=conf.getint('scheduler', 'statsd_port'),
-            prefix=conf.get('scheduler', 'statsd_prefix'))
-    Stats = statsd
-else:
-    Stats = DummyStatsLogger
+        from airflow.contrib.utils.statsd_adapter import StatsdAdapter
+
+        Stats = StatsdAdapter(
+            StatsClient(
+                host=conf.get('scheduler', 'statsd_host'),
+                port=conf.getint('scheduler', 'statsd_port'),
+                prefix=conf.get('scheduler', 'statsd_prefix'),
+            )
+        )
 
 HEADER = """\
   ____________       _____________

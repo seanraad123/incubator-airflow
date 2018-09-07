@@ -364,7 +364,13 @@ class DagBag(BaseDagBag, LoggingMixin):
                     ti.task = task
                     ti.handle_failure("{} killed as zombie".format(str(ti)))
                     self.log.info('Marked zombie job %s as failed', ti)
-                    Stats.incr('zombies_killed')
+                    Stats.incr(
+                        'zombies_killed',
+                        tags={
+                            'task_id': ti.task_id,
+                            'dag_id': ti.dag_id,
+                        },
+                    )
         session.commit()
 
     def bag_dag(self, dag, parent_dag, root_dag):
@@ -1315,7 +1321,13 @@ class TaskInstance(Base, LoggingMixin):
         self.operator = task.__class__.__name__
 
         if not ignore_all_deps and not ignore_ti_state and self.state == State.SUCCESS:
-            Stats.incr('previously_succeeded', 1, 1)
+            Stats.incr(
+                'previously_succeeded',
+                tags={
+                    'task_id': self.task_id,
+                    'dag_id': self.dag_id,
+                },
+            )
 
         queue_dep_context = DepContext(
             deps=QUEUE_DEPS,
@@ -1486,9 +1498,21 @@ class TaskInstance(Base, LoggingMixin):
                     else:
                         raise
 
-                Stats.incr('operator_successes_{}'.format(
-                    self.task.__class__.__name__), 1, 1)
-                Stats.incr('ti_successes')
+                Stats.incr(
+                    'operator_successes_{}'.format(self.task.__class__.__name__),
+                    tags={
+                        'task_id': self.task_id,
+                        'dag_id': self.dag_id,
+                    }
+                )
+                Stats.incr(
+                    'ti_successes',
+                    tags={
+                        'task_id': self.task_id,
+                        'dag_id': self.dag_id,
+                        'operator': self.task.__class__.__name__,
+                    }
+                )
             self.refresh_from_db(lock_for_update=True)
             self.state = State.SUCCESS
         except AirflowSkipException:
@@ -1571,8 +1595,21 @@ class TaskInstance(Base, LoggingMixin):
         task = self.task
         self.end_date = datetime.utcnow()
         self.set_duration()
-        Stats.incr('operator_failures_{}'.format(task.__class__.__name__), 1, 1)
-        Stats.incr('ti_failures')
+        Stats.incr(
+            'operator_failures_{}'.format(task.__class__.__name__),
+            tags={
+                'task_id': self.task_id,
+                'dag_id': self.dag_id,
+            },
+        )
+        Stats.incr(
+            'ti_failures',
+            tags={
+                'task_id': self.task_id,
+                'dag_id': self.dag_id,
+                'operator': task.__class__.__name__
+            }
+        )
         if not test_mode:
             session.add(Log(State.FAILED, self))
 
