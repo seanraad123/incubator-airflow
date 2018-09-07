@@ -180,10 +180,10 @@ class BaseJob(Base, LoggingMixin):
             self.log.debug('[heartbeat]')
 
     def run(self):
-        tags = {
-            'hostname': self.hostname,
-            'executor': self.executor_class,
-        }
+        tags = [
+            'hostname:%s' % self.hostname,
+            'executor:%s' % self.executor_class,
+        ]
         Stats.incr(self.__class__.__name__.lower() + '_start', 1, 1, tags=tags)
         # Adding an entry in the DB
         with create_session() as session:
@@ -2526,10 +2526,10 @@ class LocalTaskJob(BaseJob):
                 except OperationalError:
                     Stats.incr(
                         'local_task_job_heartbeat_failure',
-                        tags={
-                            'task_id': self.task_instance.task_id,
-                            'dag_id': self.task_instance.dag_id,
-                        },
+                        tags=[
+                            'task_id:%s' % self.task_instance.task_id,
+                            'dag_id:%s' % self.task_instance.dag_id,
+                        ],
                     )
                     self.log.exception(
                         "Exception while trying to heartbeat! Sleeping for %s seconds",
@@ -2543,10 +2543,10 @@ class LocalTaskJob(BaseJob):
                 if time_since_last_heartbeat > heartbeat_time_limit:
                     Stats.incr(
                         'local_task_job_prolonged_heartbeat_failure',
-                        tags={
-                            'task_id': self.task_instance.task_id,
-                            'dag_id': self.task_instance.dag_id,
-                        }
+                        tags=[
+                            'task_id:%s' % self.task_instance.task_id,
+                            'dag_id:%s' % self.task_instance.dag_id,
+                        ],
                     )
                     self.log.error("Heartbeat time limited exceeded!")
                     raise AirflowException("Time since last heartbeat({:.2f}s) "
