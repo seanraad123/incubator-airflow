@@ -366,10 +366,10 @@ class DagBag(BaseDagBag, LoggingMixin):
                     self.log.info('Marked zombie job %s as failed', ti)
                     Stats.incr(
                         'zombies_killed',
-                        tags={
-                            'task_id': ti.task_id,
-                            'dag_id': ti.dag_id,
-                        },
+                        tags=[
+                            'task_id:%s' % ti.task_id,
+                            'dag_id:%s' % ti.dag_id,
+                        ],
                     )
         session.commit()
 
@@ -1323,10 +1323,10 @@ class TaskInstance(Base, LoggingMixin):
         if not ignore_all_deps and not ignore_ti_state and self.state == State.SUCCESS:
             Stats.incr(
                 'previously_succeeded',
-                tags={
-                    'task_id': self.task_id,
-                    'dag_id': self.dag_id,
-                },
+                tags=[
+                    'task_id:%s' % self.task_id,
+                    'dag_id:%s' % self.dag_id,
+                ],
             )
 
         queue_dep_context = DepContext(
@@ -1500,18 +1500,18 @@ class TaskInstance(Base, LoggingMixin):
 
                 Stats.incr(
                     'operator_successes_{}'.format(self.task.__class__.__name__),
-                    tags={
-                        'task_id': self.task_id,
-                        'dag_id': self.dag_id,
-                    }
+                    tags=[
+                        'task_id:%s' % self.task_id,
+                        'dag_id:%s' % self.dag_id,
+                    ]
                 )
                 Stats.incr(
                     'ti_successes',
-                    tags={
-                        'task_id': self.task_id,
-                        'dag_id': self.dag_id,
-                        'operator': self.task.__class__.__name__,
-                    }
+                    tags=[
+                        'task_id:%s' % self.task_id,
+                        'dag_id:%s' % self.dag_id,
+                        'operator:%s' % self.task.__class__.__name__,
+                    ],
                 )
             self.refresh_from_db(lock_for_update=True)
             self.state = State.SUCCESS
@@ -1597,18 +1597,18 @@ class TaskInstance(Base, LoggingMixin):
         self.set_duration()
         Stats.incr(
             'operator_failures_{}'.format(task.__class__.__name__),
-            tags={
-                'task_id': self.task_id,
-                'dag_id': self.dag_id,
-            },
+            tags=[
+                'task_id:%s' % self.task_id,
+                'dag_id:%s' % self.dag_id,
+            ],
         )
         Stats.incr(
             'ti_failures',
-            tags={
-                'task_id': self.task_id,
-                'dag_id': self.dag_id,
-                'operator': task.__class__.__name__
-            }
+            tags=[
+                'task_id:%s' % self.task_id,
+                'dag_id:%s' % self.dag_id,
+                'operator:%s' % task.__class__.__name__
+            ],
         )
         if not test_mode:
             session.add(Log(State.FAILED, self))
