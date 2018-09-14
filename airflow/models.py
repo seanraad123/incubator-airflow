@@ -1513,6 +1513,15 @@ class TaskInstance(Base, LoggingMixin):
                         'operator:%s' % self.task.__class__.__name__,
                     ],
                 )
+                Stats.gauge(
+                    'ti_status',
+                    value=0,
+                    tags=[
+                        'task_id:%s' % self.task_id,
+                        'dag_id:%s' % self.dag_id,
+                        'operator:%s' % self.task.__class__.__name__,
+                    ],
+                )
             self.refresh_from_db(lock_for_update=True)
             self.state = State.SUCCESS
         except AirflowSkipException:
@@ -1610,6 +1619,16 @@ class TaskInstance(Base, LoggingMixin):
                 'operator:%s' % task.__class__.__name__
             ],
         )
+        Stats.gauge(
+            'ti_status',
+            value=1,
+            tags=[
+                'task_id:%s' % self.task_id,
+                'dag_id:%s' % self.dag_id,
+                'operator:%s' % self.task.__class__.__name__,
+            ],
+        )
+
         if not test_mode:
             session.add(Log(State.FAILED, self))
 
