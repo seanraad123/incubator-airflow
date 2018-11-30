@@ -159,11 +159,30 @@ class KubernetesJobOperator(BaseOperator):
             **kwargs
         )
 
+    @staticmethod
+    def retryable_check_output(args, retry_count=3):
+        """
+        Reads the job description, retrying on failure
+        :param args: Arguments to pass to subprocess.check_output
+        :type args: List of string
+        :param retry_count: Number of times to retry (default=3)
+        :type retry_count: int
+        :return: string
+        """
+        try:
+            return subprocess.check_output(args=args)
+        except subprocess.CalledProcessError as e:
+            if retry_count > 0:
+                logging.info("Retrying check_output because %s" % e)
+                return KubernetesJobOperator.get_job_description(args=args, retry_count=retry_count - 1)
+            else:
+                raise
+
     def clean_up(self, job_name):
         """
         Deletes the job. Deleting the job deletes are related pods.
         """
-        result = subprocess.check_output(args=['kubectl', 'delete', 'job', job_name])
+        result = KubernetesJobOperator.retryable_check_output(args=['kubectl', 'delete', 'job', job_name])
         logging.info(result)
 
     def on_kill(self):
@@ -179,7 +198,7 @@ class KubernetesJobOperator(BaseOperator):
             raise Exception('Job was killed')
 
     def get_pods(self, job_name):
-        return json.loads(subprocess.check_output(args=[
+        return json.loads(KubernetesJobOperator.retryable_check_output(args=[
             'kubectl', 'get', 'pods', '-o', 'json', '-l', 'job-name==%s' % job_name]))
 
     def log_container_logs(self, job_name, pod_output=None):
@@ -199,7 +218,8 @@ class KubernetesJobOperator(BaseOperator):
                 container_name = container['name']
                 extra = dict(pod=pod_name, container=container_name)
                 logging.info('LOGGING OUTPUT FROM JOB [%s/%s]:' % (pod_name, container_name), extra=extra)
-                output = subprocess.check_output(args=['kubectl', 'logs', pod_name, container_name])
+                output = KubernetesJobOperator.retryable_check_output(
+                    args=['kubectl', 'logs', pod_name, container_name])
                 for line in output.splitlines():
                     logging.info(line, extra=extra)
 
@@ -217,7 +237,7 @@ class KubernetesJobOperator(BaseOperator):
                 time.sleep(self.sleep_seconds_between_polling)
 
                 pod_output = self.get_pods(job_name)
-                job_description = subprocess.check_output(args=['kubectl', 'describe', 'job', job_name])
+                job_description = KubernetesJobOperator.retryable_check_output(['kubectl', 'describe', 'job', job_name])
                 matched = re.search(r'(\d+) Running / \d+ Succeeded / (\d+) Failed', job_description)
                 logging.info('Current status is: %s' % matched.group(0))
 
