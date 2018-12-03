@@ -174,7 +174,7 @@ class KubernetesJobOperator(BaseOperator):
         except subprocess.CalledProcessError as e:
             if retry_count > 0:
                 logging.info("Retrying check_output because %s" % e)
-                return KubernetesJobOperator.get_job_description(args=args, retry_count=retry_count - 1)
+                return KubernetesJobOperator.retryable_check_output(args=args, retry_count=retry_count - 1)
             else:
                 raise
 
