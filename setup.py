@@ -171,6 +171,7 @@ password = [
     'flask-bcrypt>=0.7.1',
 ]
 github_enterprise = ['Flask-OAuthlib>=0.9.1']
+google_auth = ['Flask-OAuthlib>=0.9.1']
 qds = ['qds-sdk>=1.9.6']
 cloudant = ['cloudant>=0.5.9,<2.0'] # major update coming soon, clamp to 0.x
 redis = ['redis>=2.10.5']
@@ -228,6 +229,7 @@ def do_setup():
             'jinja2>=2.7.3, <2.9.0',
             'lxml>=3.6.0, <4.0',
             'markdown>=2.5.2, <3.0',
+            'oauthlib>=2.0, <3.0',
             'pandas>=0.17.1, <1.0.0',
             'psutil>=4.2.0, <5.0.0',
             'pygments>=2.0.1, <3.0',
@@ -263,6 +265,7 @@ def do_setup():
             'emr': emr,
             'gcp_api': gcp_api,
             'github_enterprise': github_enterprise,
+            'google_auth': google_auth,
             'hdfs': hdfs,
             'hive': hive,
             'jdbc': jdbc,
