@@ -56,6 +56,10 @@ def load_login():
 
     try:
         global login
+
+
+
+        log.critical('got up in hur')
         login = import_module(auth_backend)
     except ImportError as err:
         log.critical(
