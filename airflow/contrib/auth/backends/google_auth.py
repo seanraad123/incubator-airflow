@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from airflow.utils.log.logging_mixin import LoggingMixin
+log = LoggingMixin().log
+log.critical('after login')
 import flask_login
 
 # Need to expose these downstream
@@ -20,16 +23,20 @@ from flask_login import (current_user,
                          login_required,
                          login_user)
 # pylint: enable=unused-import
+log.critical('after flask_login')
 
 from flask import url_for, redirect, request
+log.critical('after flask others')
 
 from flask_oauthlib.client import OAuth
+log.critical('after flask oauth')
 
 from airflow import models, configuration, settings
-from airflow.utils.db import provide_session
-from airflow.utils.log.logging_mixin import LoggingMixin
+log.critical('after airflow imports')
 
-log = LoggingMixin().log
+from airflow.utils.db import provide_session
+
+log.critical('after db imports')
 
 
 def get_config_param(param):
@@ -73,14 +80,17 @@ class AuthenticationError(Exception):
 class GoogleAuthBackend(object):
 
     def __init__(self):
+        log.critical('GAB init')
         # self.google_host = get_config_param('host')
         self.login_manager = flask_login.LoginManager()
         self.login_manager.login_view = 'airflow.login'
         self.flask_app = None
         self.google_oauth = None
         self.api_rev = None
+        log.critical('GAB done initing')
 
     def init_app(self, flask_app):
+        log.critical('GAB init app call')
         self.flask_app = flask_app
 
         self.login_manager.init_app(self.flask_app)
@@ -100,11 +110,13 @@ class GoogleAuthBackend(object):
 
         self.login_manager.user_loader(self.load_user)
 
+        log.critical('GAB init app near done')
         self.flask_app.add_url_rule(get_config_param('oauth_callback_route'),
                                     'google_oauth_callback',
                                     self.oauth_callback)
 
     def login(self, request):
+        log.critical('GAB login')
         log.debug('Redirecting user to Google login')
         return self.google_oauth.authorize(callback=url_for(
             'google_oauth_callback',
@@ -112,6 +124,7 @@ class GoogleAuthBackend(object):
             next=request.args.get('next') or request.referrer or None))
 
     def get_google_user_profile_info(self, google_token):
+        log.critical('get google call')
         resp = self.google_oauth.get('https://www.googleapis.com/oauth2/v1/userinfo',
                                     token=(google_token, ''))
 
@@ -120,9 +133,11 @@ class GoogleAuthBackend(object):
                 'Failed to fetch user profile, status ({0})'.format(
                     resp.status if resp else 'None'))
 
+        log.critical('get google out')
         return resp.data['name'], resp.data['email']
 
     def domain_check(self, email):
+        log.critical('domain check')
         domain = email.split('@')[1]
         if domain == get_config_param('domain'):
             return True
@@ -130,15 +145,18 @@ class GoogleAuthBackend(object):
 
     @provide_session
     def load_user(self, userid, session=None):
+        log.critical('user load call')
         if not userid or userid == 'None':
             return None
 
         user = session.query(models.User).filter(
             models.User.id == int(userid)).first()
+        log.critical('user load call done')
         return GoogleUser(user)
 
     @provide_session
     def oauth_callback(self, session=None):
+        log.critical('callback call')
         log.debug('Google OAuth callback called')
 
         next_url = request.args.get('next') or url_for('admin.index')
@@ -178,8 +196,10 @@ class GoogleAuthBackend(object):
         return redirect(next_url)
 
 login_manager = GoogleAuthBackend()
+log.critical('GAB instantiated')
 
 
 def login(self, request):
+    log.critical('module login')
     return login_manager.login(request)
 
