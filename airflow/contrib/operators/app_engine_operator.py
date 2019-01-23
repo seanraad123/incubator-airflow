@@ -109,7 +109,7 @@ class AppEngineOperatorSync(BaseOperator):
     :param kwargs: Named parameters to pass to BaseOperator constructor
     :type kwargs: dict
     """
-    template_fields = ('command_name',)
+    template_fields = ('command_name', 'command_params')
 
     @apply_defaults
     def __init__(self,
@@ -191,7 +191,7 @@ class AppEngineOperatorAsync(BaseOperator):
     :param kwargs: Named parameters to pass to BaseOperator constructor
     :type kwargs: dict
     """
-    template_fields = ('command_name',)
+    template_fields = ('command_name', 'command_params')
 
     @apply_defaults
     def __init__(self,
@@ -335,4 +335,3 @@ class AppEngineOperatorAsync(BaseOperator):
             raise
         finally:
             logging.info("Completed execute")
-
