@@ -188,6 +188,8 @@ class AppEngineOperatorAsync(BaseOperator):
     :type command_params: dict
     :param http_conn_id: ID mapped to the host to which the call is sent. Can be defined in Airflow UI
     :type http_conn_id: str
+    :param appengine_timeout: Number of seconds passed without a response in xcom before throwing a AirflowTaskTimeout
+    :type appengine_timeout: int
     :param kwargs: Named parameters to pass to BaseOperator constructor
     :type kwargs: dict
     """
@@ -200,9 +202,11 @@ class AppEngineOperatorAsync(BaseOperator):
                  appengine_queue,
                  command_params={},
                  http_conn_id='appengine',
+                 appengine_timeout=3600,
                  **kwargs):
         super(AppEngineOperatorAsync, self).__init__(task_id=task_id, **kwargs)
         self.http_conn_id = http_conn_id
+        self.appengine_timeout = appengine_timeout
         self.command_name = command_name
         self.command_params = command_params
         self.appengine_queue = appengine_queue
@@ -274,7 +278,7 @@ class AppEngineOperatorAsync(BaseOperator):
 
         # Bluecore App Engine backend instances timeout after an hour
         while True:
-            remaining_secs = 3600 - (datetime.utcnow() - start_time).total_seconds()
+            remaining_secs = self.appengine_timeout - (datetime.utcnow() - start_time).total_seconds()
             logging.info("%0.2f seconds remain until timeout" % remaining_secs)
             if remaining_secs <= 0:
                 raise AirflowTaskTimeout()
