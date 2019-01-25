@@ -630,6 +630,30 @@ class TimeDeltaSensor(BaseSensorOperator):
         return datetime.utcnow() > target_dttm
 
 
+class StaggerSensor(BaseSensorOperator):
+    """
+    CUSTOM BLUECORE SENSOR
+    Same as TimeDeltaSensor, but just waits for a timedelta after the task's execution date.
+    The purpose of this sensor is to delay the execution of a task. The TimeDeltaSensor, for a
+    daily task, would automatically delay the task for: 1 day + your timedelta.... Not sure why.
+
+    :param delta: time length to wait after execution_date before succeeding
+    :type delta: datetime.timedelta
+    """
+    template_fields = tuple()
+
+    @apply_defaults
+    def __init__(self, delta, *args, **kwargs):
+        super(StaggerSensor, self).__init__(*args, **kwargs)
+        self.delta = delta
+
+    def poke(self, context):
+        execution_date = context['execution_date']
+        staggered_start_time = execution_date + self.delta
+        self.log.info('Checking if the time (%s) has come', staggered_start_time)
+        return datetime.utcnow() > staggered_start_time
+
+
 class HttpSensor(BaseSensorOperator):
     """
     Executes a HTTP get statement and returns False on failure:

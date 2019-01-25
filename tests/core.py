@@ -476,6 +476,13 @@ class CoreTest(unittest.TestCase):
             dag=self.dag)
         t.run(start_date=DEFAULT_DATE, end_date=DEFAULT_DATE, ignore_ti_state=True)
 
+    def test_stagger_sensor(self):
+        t = sensors.StaggerSensor(
+            task_id='stagger_sensor_check',
+            delta=timedelta(seconds=2),
+            dag=self.dag)
+        t.run(start_date=DEFAULT_DATE, end_date=DEFAULT_DATE, ignore_ti_state=True)
+
     def test_external_task_sensor(self):
         t = sensors.ExternalTaskSensor(
             task_id='test_external_task_sensor_check',
