@@ -1074,10 +1074,6 @@ class SchedulerJob(BaseJob):
             ti_query = ti_query.filter(TI.state.in_(states))
 
         task_instances_to_examine = ti_query.all()
-        try:
-            self.log.info("ChenTest: query is " + str(ti_query.statement))
-        except:
-            pass
 
         if len(task_instances_to_examine) == 0:
             self.log.info("No tasks to consider for execution.")
