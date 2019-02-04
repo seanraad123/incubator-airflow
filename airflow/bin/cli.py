@@ -870,6 +870,9 @@ def worker(args):
         'concurrency': args.concurrency,
         'hostname': args.celery_hostname,
     }
+    log = LoggingMixin().log
+    log.info("ChenTest: hostname is " + args.celery_hostname)
+
 
     if args.daemon:
         pid, stdout, stderr, log_file = setup_locations("worker", args.pid, args.stdout, args.stderr, args.log_file)

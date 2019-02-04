@@ -25,6 +25,7 @@ DEFAULT_CELERY_CONFIG = {
     'result_serializer': 'pickle',
     'worker_prefetch_multiplier': 1,
     'task_acks_late': True,
+    'task_send_sent_event': True,
     'task_default_queue': configuration.get('celery', 'DEFAULT_QUEUE'),
     'task_default_exchange': configuration.get('celery', 'DEFAULT_QUEUE'),
     'broker_url': configuration.get('celery', 'BROKER_URL'),

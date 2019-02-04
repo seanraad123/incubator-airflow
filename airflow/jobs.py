@@ -1074,6 +1074,10 @@ class SchedulerJob(BaseJob):
             ti_query = ti_query.filter(TI.state.in_(states))
 
         task_instances_to_examine = ti_query.all()
+        try:
+            self.log.info("ChenTest: query is " + str(ti_query.statement))
+        except:
+            pass
 
         if len(task_instances_to_examine) == 0:
             self.log.info("No tasks to consider for execution.")
@@ -1090,6 +1094,7 @@ class SchedulerJob(BaseJob):
         pool_to_task_instances = defaultdict(list)
         for task_instance in task_instances_to_examine:
             pool_to_task_instances[task_instance.pool].append(task_instance)
+        self.log.info("ChenTest: pool_to_task_instances is " + str(pool_to_task_instances))
 
         task_concurrency_map = self.__get_task_concurrency_map(states=states_to_count_as_running, session=session)
 
@@ -1303,6 +1308,7 @@ class SchedulerJob(BaseJob):
             task_instance.task_id = copy_task_id
             task_instance.execution_date = copy_execution_date
 
+            self.log.info("ChenTest: executor is " + type(self.executor))
             self.executor.queue_command(
                 task_instance,
                 command,
