@@ -121,6 +121,7 @@ class BaseExecutor(LoggingMixin):
             ti.refresh_from_db()
             if ti.state != State.RUNNING:
                 self.running[key] = command
+                self.log.info("ChenTest: run execute_async on %s for %s", self.__class__, key)
                 self.execute_async(key, command=command, queue=queue)
             else:
                 self.log.debug(
