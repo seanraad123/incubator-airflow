@@ -1304,7 +1304,7 @@ class SchedulerJob(BaseJob):
             task_instance.task_id = copy_task_id
             task_instance.execution_date = copy_execution_date
 
-            self.log.info("ChenTest: executor is " + type(self.executor))
+            self.log.info("ChenTest: executor is " + str(self.executor.__class__))
             self.executor.queue_command(
                 task_instance,
                 command,
