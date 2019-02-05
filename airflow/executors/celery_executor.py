@@ -72,9 +72,12 @@ class CeleryExecutor(BaseExecutor):
                       queue=DEFAULT_CELERY_CONFIG['task_default_queue']):
         self.log.info( "[celery] queuing {key} through celery, "
                        "queue={queue}".format(**locals()))
+        self.log.info("ChenTest: execute_command type is %s", type(execute_command))
         self.tasks[key] = execute_command.apply_async(
             args=[command], queue=queue)
         self.last_state[key] = celery_states.PENDING
+        self.log.info("ChenTest: tasks are %s", self.tasks)
+        self.log.info("Chentest: last_state are %s", self.last_state)
 
     def sync(self):
         self.log.debug("Inquiring about %s celery task(s)", len(self.tasks))

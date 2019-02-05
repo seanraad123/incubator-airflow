@@ -130,7 +130,7 @@ class BaseExecutor(LoggingMixin):
                 )
 
         # Calling child class sync method
-        self.log.debug("Calling the %s sync method", self.__class__)
+        self.log.info("Calling the %s sync method", self.__class__)
         self.sync()
 
     def change_state(self, key, state):
