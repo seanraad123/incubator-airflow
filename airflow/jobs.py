@@ -1290,6 +1290,7 @@ class SchedulerJob(BaseJob):
 
             priority = task_instance.priority_weight
             queue = task_instance.queue
+            self.log.info("ChenTest: executor is %", str(self.executor.__class__))
             self.log.info(
                 "Sending %s to executor with priority %s and queue %s",
                 task_instance.key, priority, queue
@@ -1304,7 +1305,6 @@ class SchedulerJob(BaseJob):
             task_instance.task_id = copy_task_id
             task_instance.execution_date = copy_execution_date
 
-            self.log.info("ChenTest: executor is " + str(self.executor.__class__))
             self.executor.queue_command(
                 task_instance,
                 command,
