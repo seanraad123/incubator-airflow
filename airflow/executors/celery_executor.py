@@ -47,7 +47,7 @@ app = Celery(
 @app.task
 def execute_command(command):
     log = LoggingMixin().log
-    log.info("Executing command in Celery: %s", command)
+    log.info("CHenTest: Executing command in Celery: %s", command)
     try:
         subprocess.check_call(command, shell=True)
     except subprocess.CalledProcessError as e:
@@ -86,7 +86,7 @@ class CeleryExecutor(BaseExecutor):
             pass
 
     def sync(self):
-        self.log.info("Inquiring about %s celery task(s)", len(self.tasks))
+        self.log.info("ChenTest: Inquiring about %s celery task(s)", len(self.tasks))
         for key, async in list(self.tasks.items()):
             try:
                 state = async.state

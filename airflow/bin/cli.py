@@ -871,8 +871,11 @@ def worker(args):
         'hostname': args.celery_hostname,
     }
     log = LoggingMixin().log
-    log.info("ChenTest: hostname is %s", args.celery_hostname)
-
+    try:
+        log.info("ChenTest: hostname is %s", args.celery_hostname)
+        log.info("ChenTest: consumer is %s", worker.consumer)
+    except:
+        pass
 
     if args.daemon:
         pid, stdout, stderr, log_file = setup_locations("worker", args.pid, args.stdout, args.stderr, args.log_file)
