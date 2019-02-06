@@ -86,7 +86,7 @@ class CeleryExecutor(BaseExecutor):
             pass
 
     def sync(self):
-        self.log.debug("Inquiring about %s celery task(s)", len(self.tasks))
+        self.log.info("Inquiring about %s celery task(s)", len(self.tasks))
         for key, async in list(self.tasks.items()):
             try:
                 state = async.state
