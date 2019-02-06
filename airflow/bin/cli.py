@@ -871,7 +871,7 @@ def worker(args):
         'hostname': args.celery_hostname,
     }
     log = LoggingMixin().log
-    log.info("ChenTest: hostname is " + args.celery_hostname)
+    log.info("ChenTest: hostname is %s", args.celery_hostname)
 
 
     if args.daemon:
