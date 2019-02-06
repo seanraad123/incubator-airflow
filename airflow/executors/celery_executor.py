@@ -75,7 +75,7 @@ class CeleryExecutor(BaseExecutor):
         try:
             self.log.info("ChenTest: execute_command type is %s", execute_command.__class__)
             self.log.info("ChenTest: execute_command request is %s", execute_command.request)
-        execpt:
+        except:
             pass
         self.tasks[key] = execute_command.apply_async(
             args=[command], queue=queue)
