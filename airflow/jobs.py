@@ -1305,6 +1305,7 @@ class SchedulerJob(BaseJob):
             task_instance.task_id = copy_task_id
             task_instance.execution_date = copy_execution_date
 
+            self.executor.find_consumers()
             self.executor.queue_command(
                 task_instance,
                 command,

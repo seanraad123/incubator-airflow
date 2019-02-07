@@ -47,7 +47,7 @@ app = Celery(
 @app.task
 def execute_command(command):
     log = LoggingMixin().log
-    log.info("CHenTest: Executing command in Celery: %s", command)
+    log.info("ChenTest: Executing command in Celery: %s", command)
     try:
         subprocess.check_call(command, shell=True)
     except subprocess.CalledProcessError as e:
@@ -67,6 +67,13 @@ class CeleryExecutor(BaseExecutor):
     def start(self):
         self.tasks = {}
         self.last_state = {}
+
+    def find_consumers(self):
+        try:
+            self.log.info("ChenTest CeleryExecutor dir: %s", dir(self))
+            self.log.info("ChenTest consumers: %s", self.app.control.inspect().active())
+        except:
+            pass
 
     def execute_async(self, key, command,
                       queue=DEFAULT_CELERY_CONFIG['task_default_queue']):
