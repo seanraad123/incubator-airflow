@@ -72,10 +72,9 @@ class CeleryExecutor(BaseExecutor):
         try:
             workers = app.control.inspect().active().keys()
             self.log.info("ChenTest: workers %s", workers)
-            reply = app.control.broadcast('ping', {
-                    'task_name': 'scale_down'}, reply=True,
+            reply = app.control.broadcast('cancel_consumer', reply=True,
                     destination=[workers[0]])
-            self.log.info("ChenTest: broadcast reply %s", reply)
+            self.log.info("ChenTest: cancel_consumer reply %s", reply)
         except:
             pass
 
