@@ -70,11 +70,13 @@ class CeleryExecutor(BaseExecutor):
 
     def find_consumers(self):
         try:
-            self.log.info("ChenTest CeleryExecutor dir: %s", dir(self))
-            controller = app.control
-            self.log.info("ChenTest: controller type is %s", controller.__class__)
-            self.log.info("ChenTest: controller dir is %s", dir(controller))
-            self.log.info("ChenTest consumers: %s", controller.inspect().active())
+            workers = app.control.inspect().active().keys()
+            self.log.info("ChenTest: workers %s", workers)
+            reply = app.control.broadcast('rate_limit', {
+                    'task_name': 'scale_down',
+                    'rate_limit': '20/m'}, reply=True,
+                    destination=[workers[0]])
+            self.log.info("ChenTest: broadcast reply %s", reply)
         except:
             pass
 
