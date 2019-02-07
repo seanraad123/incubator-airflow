@@ -72,9 +72,8 @@ class CeleryExecutor(BaseExecutor):
         try:
             workers = app.control.inspect().active().keys()
             self.log.info("ChenTest: workers %s", workers)
-            reply = app.control.broadcast('rate_limit', {
-                    'task_name': 'scale_down',
-                    'rate_limit': '20/m'}, reply=True,
+            reply = app.control.broadcast('ping', {
+                    'task_name': 'scale_down'}, reply=True,
                     destination=[workers[0]])
             self.log.info("ChenTest: broadcast reply %s", reply)
         except:
@@ -99,7 +98,7 @@ class CeleryExecutor(BaseExecutor):
             pass
 
     def sync(self):
-        self.log.info("ChenTest: Inquiring about %s celery task(s)", len(self.tasks))
+        self.log.info("Inquiring about %s celery task(s)", len(self.tasks))
         for key, async in list(self.tasks.items()):
             try:
                 state = async.state
