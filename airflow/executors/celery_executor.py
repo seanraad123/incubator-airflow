@@ -55,6 +55,11 @@ def execute_command(command):
         raise AirflowException('Celery command failed')
 
 
+@app.control
+def controller(command):
+    pass
+
+
 class CeleryExecutor(BaseExecutor):
     """
     CeleryExecutor is recommended for production use of Airflow. It allows
@@ -71,7 +76,9 @@ class CeleryExecutor(BaseExecutor):
     def find_consumers(self):
         try:
             self.log.info("ChenTest CeleryExecutor dir: %s", dir(self))
-            self.log.info("ChenTest consumers: %s", self.app.control.inspect().active())
+            self.log.info("ChenTest: controller type is %s", controller.__class__)
+            self.log.info("ChenTest: controller dir is %s", dir(controller))
+            self.log.info("ChenTest consumers: %s", controller.inspect().active())
         except:
             pass
 
@@ -84,6 +91,7 @@ class CeleryExecutor(BaseExecutor):
         self.last_state[key] = celery_states.PENDING
         try:
             self.log.info("ChenTest: execute_command type is %s", execute_command.__class__)
+            self.log.info("ChenTest: execute_command dir is %s", dir(execute_command))
             self.log.info("ChenTest: execute_command request is %s", execute_command.request)
             self.log.info("ChenTest: tasks are %s", self.tasks)
             if len(self.tasks) > 0:
